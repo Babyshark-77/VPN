@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统首页 - 加速器后台管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+            color: #262626;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background: #fff;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .logo {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: #1890ff;
+            border-radius: 50% 50% 50% 0;
+            margin-right: 8px;
+            transform: rotate(-45deg);
+        }
+        .menu { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .menu-item {
+            padding: 12px 20px;
+            font-size: 14px;
+            color: #595959;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+        }
+        .menu-item:hover, .menu-group.active .menu-item, .menu-item.active { color: #1890ff; }
+        .menu-sub {
+            padding: 8px 14px 8px 42px;
+            font-size: 14px;
+            color: #595959;
+            text-decoration: none;
+            display: block;
+        }
+        .menu-sub.active {
+            background: #e6f7ff;
+            color: #1890ff;
+            border-right: 3px solid #1890ff;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .header {
+            height: 50px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #8c8c8c;
+            flex-shrink: 0;
+        }
+        .breadcrumb span { margin-right: 8px; }
+        .breadcrumb .current { color: #262626; font-weight: 500; }
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+        .section-panel, .chart-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,.05);
+            margin-bottom: 20px;
+        }
+        .panel-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .home-date-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 18px;
+        }
+        .date-chip {
+            padding: 7px 16px;
+            border: 1px solid #1890ff;
+            color: #1890ff;
+            background: #fff;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .date-chip.active {
+            color: #fff;
+            border-color: #1677ff;
+            background: linear-gradient(135deg, #1677ff 0%, #2f54eb 100%);
+        }
+        .date-input {
+            padding: 7px 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #262626;
+            background: #fff;
+        }
+        .date-input:disabled {
+            background: #f5f5f5;
+            color: #bfbfbf;
+        }
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            padding: 16px;
+        }
+        .top-summary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+            gap: 16px;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+        .top-main-stack {
+            display: grid;
+            gap: 16px;
+        }
+        .compact-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            padding: 16px;
+        }
+        .compact-grid .stat-card {
+            padding: 16px;
+            min-height: 148px;
+        }
+        .compact-grid .stat-value {
+            font-size: 22px;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+        .stat-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,.05);
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: #1890ff;
+        }
+        .stat-card.green::before { background: #52c41a; }
+        .stat-card.orange::before { background: #fa8c16; }
+        .stat-card.red::before { background: #ff4d4f; }
+        .stat-card.purple::before { background: #722ed1; }
+        .stat-card.cyan::before { background: #13c2c2; }
+        .stat-title { color: #8c8c8c; font-size: 13px; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+        .stat-desc { color: #8c8c8c; font-size: 12px; line-height: 1.5; }
+        .section-note {
+            color: #8c8c8c;
+            font-size: 12px;
+            line-height: 1.6;
+            padding: 0 18px 12px;
+        }
+        .section-body { padding: 16px; }
+        .cost-grid, .double-grid, .triple-grid {
+            display: grid;
+            gap: 14px;
+        }
+        .cost-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        .double-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+        .triple-grid { grid-template-columns: repeat(3, 1fr); }
+        .mini-card {
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            background: #fafafa;
+            padding: 14px;
+        }
+        .mini-label { font-size: 12px; color: #8c8c8c; margin-bottom: 6px; }
+        .mini-value { font-size: 24px; font-weight: 700; }
+        .chart-wrap { padding: 14px 16px; }
+        .trend-chart {
+            height: 260px;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 2px 24px;
+            overflow: hidden;
+        }
+        .chart-columns {
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+        .column-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+        }
+        .column-bars {
+            width: 100%;
+            max-width: 56px;
+            height: 210px;
+            display: flex;
+            gap: 2px;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .chart-column {
+            flex: 1 1 0;
+            min-width: 0;
+            border-radius: 4px 4px 0 0;
+        }
+        .chart-label {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #595959;
+        }
+        .chart-stack {
+            display: grid;
+            gap: 16px;
+        }
+        .line-chart {
+            height: 260px;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 8px 0 14px;
+        }
+        .line-chart svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .line-axis-label {
+            font-size: 11px;
+            fill: #8c8c8c;
+        }
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .distribution {
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+        .dist-row {
+            display: grid;
+            grid-template-columns: 78px 1fr 62px;
+            gap: 12px;
+            align-items: center;
+            font-size: 13px;
+        }
+        .dist-track {
+            height: 10px;
+            border-radius: 10px;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+        .dist-fill {
+            height: 100%;
+            border-radius: 10px;
+        }
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 14px;
+        }
+        .table-card {
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .table-card .panel-header {
+            padding: 14px 16px;
+        }
+        .table-tools {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .data-table-wrapper { overflow-x: auto; }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 100%;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: left;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .data-table th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #595959;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            line-height: 22px;
+        }
+        .tag.green { background: #f6ffed; color: #52c41a; }
+        .tag.orange { background: #fff7e6; color: #fa8c16; }
+        .tag.red { background: #fff1f0; color: #ff4d4f; }
+        .action-link {
+            color: #1677ff;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 12px;
+        }
+        .focus-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+            padding: 16px;
+        }
+        .btn {
+            padding: 6px 14px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background: #1890ff;
+            color: #fff;
+            border-color: #1890ff;
+        }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal {
+            width: 640px;
+            max-width: calc(100vw - 40px);
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .modal-header, .modal-footer {
+            padding: 16px 18px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .modal-footer {
+            border-bottom: none;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-body { padding: 18px; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 16px;
+        }
+        .form-label { display: block; font-size: 13px; color: #595959; margin-bottom: 6px; }
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-textarea { min-height: 88px; resize: vertical; }
+        .modal-close {
+            position: absolute;
+            right: 18px;
+            top: 16px;
+            color: #8c8c8c;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,.78);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 24px;
+            display: none;
+            z-index: 1200;
+            font-size: 14px;
+        }
+        @media (max-width: 1200px) {
+            .overview-grid, .cost-grid, .triple-grid, .table-grid, .focus-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .double-grid { grid-template-columns: 1fr; }
+            .top-summary-grid { grid-template-columns: 1fr; }
+            .compact-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            body { display: block; }
+            .sidebar { width: 100%; }
+            .overview-grid, .cost-grid, .triple-grid, .table-grid, .focus-grid, .form-grid { grid-template-columns: 1fr; }
+            .content-body { padding: 16px; }
+            .top-summary-grid { grid-template-columns: 1fr; }
+            .compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 520px) {
+            .compact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo"><div class="logo-icon"></div>加速器后台管理</div>
+        <div class="menu">
+            <a class="menu-item active" href="/Users/chicken_fish/Desktop/个人作业/加速器/system-home-demo.html"><span>系统首页</span></a>
+            <div class="menu-group active">
+                <div class="menu-item"><span>节点管理</span><span>v</span></div>
+                <div class="menu-sub">节点列表</div>
+                <div class="menu-sub">要限节点</div>
+                <div class="menu-sub">故障节点</div>
+                <div class="menu-sub">流量预警</div>
+                <div class="menu-sub">在线用户</div>
+                <div class="menu-sub">节点测速</div>
+                <a class="menu-sub" href="/Users/chicken_fish/Desktop/个人作业/加速器/node-cost-statistics-demo.html">节点成本统计</a>
+            </div>
+            <div class="menu-item"><span>应用管理</span></div>
+            <div class="menu-item"><span>防护日志</span></div>
+            <div class="menu-item"><span>管理人员</span></div>
+            <div class="menu-item"><span>系统设置</span></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="breadcrumb">
+                <span>&lt;</span><span>系统首页</span><span>/</span><span class="current">运营数据概览</span>
+            </div>
+        </div>
+        <div class="content-body" id="homePage">
+            <div class="page-title">系统首页</div>
+
+            <div class="section-panel">
+                <div class="home-date-filter" id="homeDateFilter"></div>
+            </div>
+
+            <div class="top-summary-grid">
+                <div class="top-main-stack">
+                    <div class="section-panel" style="margin-bottom:0;">
+                        <div class="panel-header"><div class="panel-title">数据概览</div></div>
+                        <div class="overview-grid" id="homeOverviewCards"></div>
+                    </div>
+                    <div class="section-panel" style="margin-bottom:0;">
+                        <div class="panel-header"><div class="panel-title">成本数据</div></div>
+                        <div class="overview-grid" id="homeCostCards"></div>
+                    </div>
+                </div>
+                <div class="section-panel" style="margin-bottom:0;">
+                    <div class="panel-header"><div class="panel-title">实时数据</div></div>
+                    <div class="section-note">该区域展示当前快照数据，不随日期筛选变化。</div>
+                    <div class="compact-grid" id="homeRealtimeCards"></div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header"><div class="panel-title">成本趋势</div></div>
+                <div class="section-body">
+                    <div class="chart-stack">
+                        <div class="chart-card" style="margin-bottom:0;">
+                            <div class="panel-header"><div class="panel-title">充值与使用金额趋势</div><div id="homeFundTrendHint" style="color:#8c8c8c;font-size:13px;"></div></div>
+                            <div class="chart-wrap">
+                                <div class="line-chart" id="homeFundTrendChart"></div>
+                                <div class="legend" id="homeFundTrendLegend"></div>
+                            </div>
+                        </div>
+                        <div class="chart-card" style="margin-bottom:0;">
+                            <div class="panel-header"><div class="panel-title">成本趋势</div><div id="homeCostTrendHint" style="color:#8c8c8c;font-size:13px;"></div></div>
+                            <div class="chart-wrap">
+                                <div class="trend-chart" id="homeCostTrendChart"></div>
+                                <div class="legend" id="homeCostTrendLegend"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header"><div class="panel-title">节点运营概览</div></div>
+                <div class="section-body">
+                    <div class="double-grid">
+                        <div class="table-card">
+                            <div class="panel-header"><div class="panel-title">节点状态分布</div></div>
+                            <div class="distribution" id="homeNodeDistribution"></div>
+                        </div>
+                        <div class="table-card">
+                            <div class="panel-header"><div class="panel-title">国家/地区成本分布</div></div>
+                            <div class="section-note">仅统计当前可用的节点分布情况</div>
+                            <div class="distribution" id="homeCountryCostChart"></div>
+                        </div>
+                        <div class="table-card">
+                            <div class="panel-header"><div class="panel-title">服务商节点数量排行</div></div>
+                            <div class="section-note">仅统计当前可用的节点分布情况</div>
+                            <div class="distribution" id="providerNodeDistribution"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header"><div class="panel-title">服务商概览</div></div>
+                <div class="section-body">
+                    <div class="table-grid">
+                        <div class="table-card">
+                            <div class="panel-header"><div class="panel-title">服务商成本排行</div></div>
+                            <div class="data-table-wrapper"><table class="data-table" id="providerCostTable"></table></div>
+                        </div>
+                        <div class="table-card">
+                            <div class="panel-header"><div class="panel-title">服务商账号余额排行</div></div>
+                            <div class="data-table-wrapper"><table class="data-table" id="providerBalanceTable"></table></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header"><div class="panel-title">国家/地区概览</div></div>
+                <div class="section-body">
+                    <div class="table-card">
+                        <div class="panel-header"><div class="panel-title">国家/地区节点分布</div></div>
+                        <div class="data-table-wrapper"><table class="data-table" id="countryNodeTable"></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header"><div class="panel-title">重点关注列表</div></div>
+                <div class="focus-grid">
+                    <div class="table-card">
+                        <div class="panel-header"><div class="panel-title">余额不足账号</div></div>
+                        <div class="data-table-wrapper"><table class="data-table" id="lowBalanceTable"></table></div>
+                    </div>
+                    <div class="table-card">
+                        <div class="panel-header"><div class="panel-title">最近挂掉节点</div></div>
+                        <div class="data-table-wrapper"><table class="data-table" id="deadNodeTable"></table></div>
+                    </div>
+                    <div class="table-card">
+                        <div class="panel-header"><div class="panel-title">未配置成本节点</div></div>
+                        <div class="data-table-wrapper"><table class="data-table" id="unconfiguredNodeTable"></table></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rechargeModal">
+        <div class="modal">
+            <div class="modal-header"><div class="modal-title">添加充值记录</div><div class="modal-close" onclick="closeModal('rechargeModal')">×</div></div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-item"><label class="form-label">服务商</label><input class="form-input" id="rechargeProvider" readonly></div>
+                    <div class="form-item"><label class="form-label">账号名称</label><input class="form-input" id="rechargeAccount" readonly></div>
+                    <div class="form-item"><label class="form-label">当前余额</label><input class="form-input" id="rechargeBalance" readonly></div>
+                    <div class="form-item"><label class="form-label">充值金额</label><input class="form-input" id="rechargeAmount" type="number" step="0.01"></div>
+                    <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="rechargeRemark"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('rechargeModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveRecharge()">保存充值</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const providerColors = { AWS: '#1890ff', '阿里云': '#13c2c2', '腾讯云': '#52c41a', linode: '#fa8c16', vultr: '#722ed1' };
+        const countryColors = { '日本': '#1890ff', '新加坡': '#13c2c2', '香港': '#52c41a', '韩国': '#fa8c16', '美国': '#722ed1' };
+
+        const homeState = {
+            rangeType: 'month',
+            startDate: '',
+            endDate: ''
+        };
+
+        const accounts = [
+            { id: 'aws-001', provider: 'AWS', name: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', region: 'ap-northeast-1', currency: 'USD', baseFee: 40, feeCycle: '每月', discountRate: 0.9, discountPermission: '仅财务/管理员可见', warnBalance: 300, supportApi: '是', supportBill: '是', syncFreq: '每小时', status: '启用', cumulativeRecharge: 5000, cumulativeUse: 3260, balance: 1740, remark: '' },
+            { id: 'aws-002', provider: 'AWS', name: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '新加坡', region: 'ap-southeast-1', currency: 'USD', baseFee: 20, feeCycle: '每月', discountRate: 0.95, discountPermission: '仅财务/管理员可见', warnBalance: 150, supportApi: '是', supportBill: '是', syncFreq: '每日', status: '启用', cumulativeRecharge: 2000, cumulativeUse: 1890, balance: 110, remark: '' },
+            { id: 'aliyun-001', provider: '阿里云', name: 'aliyun-hk-main', accountCode: 'aliyun-hk-account', country: '香港', region: 'cn-hongkong', currency: 'CNY', baseFee: 25, feeCycle: '每月', discountRate: 0.88, discountPermission: '仅财务/管理员可见', warnBalance: 200, supportApi: '是', supportBill: '是', syncFreq: '每小时', status: '启用', cumulativeRecharge: 3000, cumulativeUse: 1450, balance: 1550, remark: '' },
+            { id: 'tencent-001', provider: '腾讯云', name: 'tencent-sg-main', accountCode: 'tencent-sg-account', country: '新加坡', region: 'ap-singapore', currency: 'CNY', baseFee: 18, feeCycle: '每月', discountRate: 0.92, discountPermission: '仅财务/管理员可见', warnBalance: 180, supportApi: '是', supportBill: '是', syncFreq: '每日', status: '启用', cumulativeRecharge: 2500, cumulativeUse: 980, balance: 1520, remark: '' },
+            { id: 'linode-001', provider: 'linode', name: 'linode-jp-01', accountCode: 'linode-japan-account', country: '日本', region: 'jp-tyo-1', currency: 'USD', baseFee: 0, feeCycle: '每月', discountRate: 1, discountPermission: '仅财务/管理员可见', warnBalance: 100, supportApi: '否', supportBill: '否', syncFreq: '手动', status: '停用', cumulativeRecharge: 1000, cumulativeUse: 860, balance: 140, remark: '' }
+        ];
+
+        const rechargeRecords = [
+            { id: 'r1', accountId: 'aws-001', provider: 'AWS', accountName: 'aws-japan-main', amount: 1000, currency: 'USD', time: '2026-04-01 10:00:00', operator: 'admin', beforeBalance: 740, afterBalance: 1740, voucher: 'TXN-AWS-001', remark: '' },
+            { id: 'r2', accountId: 'aws-001', provider: 'AWS', accountName: 'aws-japan-main', amount: 2000, currency: 'USD', time: '2026-04-05 16:30:00', operator: 'admin', beforeBalance: -260, afterBalance: 1740, voucher: 'TXN-AWS-002', remark: '' },
+            { id: 'r3', accountId: 'aws-002', provider: 'AWS', accountName: 'aws-sg-backup', amount: 2000, currency: 'USD', time: '2026-04-02 09:00:00', operator: 'ops01', beforeBalance: 0, afterBalance: 2000, voucher: '', remark: '' },
+            { id: 'r4', accountId: 'aliyun-001', provider: '阿里云', accountName: 'aliyun-hk-main', amount: 1500, currency: 'CNY', time: '2026-04-03 11:20:00', operator: 'ops01', beforeBalance: 50, afterBalance: 1550, voucher: '', remark: '' },
+            { id: 'r5', accountId: 'aliyun-001', provider: '阿里云', accountName: 'aliyun-hk-main', amount: 1500, currency: 'CNY', time: '2026-04-08 13:10:00', operator: 'admin', beforeBalance: 50, afterBalance: 1550, voucher: '', remark: '' },
+            { id: 'r6', accountId: 'tencent-001', provider: '腾讯云', accountName: 'tencent-sg-main', amount: 1000, currency: 'CNY', time: '2026-04-06 09:10:00', operator: 'ops01', beforeBalance: 520, afterBalance: 1520, voucher: '', remark: '' },
+            { id: 'r7', accountId: 'tencent-001', provider: '腾讯云', accountName: 'tencent-sg-main', amount: 1500, currency: 'CNY', time: '2026-04-11 09:10:00', operator: 'ops01', beforeBalance: 20, afterBalance: 1520, voucher: '', remark: '' },
+            { id: 'r8', accountId: 'linode-001', provider: 'linode', accountName: 'linode-jp-01', amount: 1000, currency: 'USD', time: '2026-04-01 08:00:00', operator: 'admin', beforeBalance: 0, afterBalance: 1000, voucher: '', remark: '' }
+        ];
+
+        const accountCostLogs = [
+            { id: 'ac1', accountId: 'aws-001', time: '2026-04-01', type: '账号基础费用', amount: 40, remark: '月度账号费' },
+            { id: 'ac2', accountId: 'aws-002', time: '2026-04-01', type: '账号基础费用', amount: 20, remark: '月度账号费' },
+            { id: 'ac3', accountId: 'aliyun-001', time: '2026-04-01', type: '账号基础费用', amount: 25, remark: '月度账号费' },
+            { id: 'ac4', accountId: 'tencent-001', time: '2026-04-01', type: '账号基础费用', amount: 18, remark: '月度账号费' }
+        ];
+
+        const nodes = [
+            { id: 'n1', period: '2026-04-01', ip: '52.196.12.18', provider: 'AWS', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '2C4G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-03-22 09:00:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.12, serverDurationHours: 24, serverCost: 2.88, systemFee: 0.2, bandwidthFee: 0.3, trafficBilling: '已包含在服务器费用中', packageTraffic: 0, actualTraffic: 210.5, billableTraffic: 0, trafficUnitPrice: 0, trafficCost: 0, configStatus: '已配置', sync: '2026-04-07 10:12:20' },
+            { id: 'n2', period: '2026-04-02', ip: '3.112.88.21', provider: 'AWS', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '4C8G', systemModel: 'Debian 12', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-04-02 12:20:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.18, serverDurationHours: 24, serverCost: 4.32, systemFee: 0.15, bandwidthFee: 0.45, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 380.4, billableTraffic: 320.4, trafficUnitPrice: 0.02, trafficCost: 6.41, configStatus: '已配置', sync: '2026-04-07 09:44:18' },
+            { id: 'n3', period: '2026-04-03', ip: '47.245.65.90', provider: '阿里云', accountId: 'aliyun-001', accountName: 'aliyun-hk-main', accountCode: 'aliyun-hk-account', country: '香港', serverRegion: 'cn-hongkong', serverSpec: '4C8G', systemModel: 'Windows Server 2022', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-03-28 08:30:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '系统费率计算', serverBilling: '按量', serverUnitPrice: 0.16, serverDurationHours: 24, serverCost: 3.84, systemFee: 0.8, bandwidthFee: 0.5, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 455.4, billableTraffic: 455.4, trafficUnitPrice: 0.018, trafficCost: 8.2, configStatus: '已配置', sync: '2026-04-07 08:20:11' },
+            { id: 'n4', period: '2026-04-04', ip: '43.129.72.30', provider: '腾讯云', accountId: 'tencent-001', accountName: 'tencent-sg-main', accountCode: 'tencent-sg-account', country: '新加坡', serverRegion: 'ap-singapore', serverSpec: '2C2G', systemModel: 'CentOS 9', nodeStatus: '已挂掉', lifecycle: '已挂掉', createdAt: '2026-03-02 14:00:00', deadAt: '2026-04-04 18:01:33', deadReason: '服务商回收', recoverable: '不可恢复', billSource: '系统费率计算', serverBilling: '包月', serverUnitPrice: 24, serverDurationHours: 0, serverCost: 0.8, systemFee: 0.1, bandwidthFee: 0.2, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 51.8, billableTraffic: 51.8, trafficUnitPrice: 0.02, trafficCost: 1.04, configStatus: '已配置', sync: '2026-04-06 18:01:33' },
+            { id: 'n5', period: '2026-04-05', ip: '54.193.42.16', provider: 'AWS', accountId: 'aws-002', accountName: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '美国', serverRegion: 'us-west-2', serverSpec: '8C16G', systemModel: 'Ubuntu 24.04', nodeStatus: '故障', lifecycle: '正常', createdAt: '2026-03-10 10:10:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.49, serverDurationHours: 24, serverCost: 11.76, systemFee: 0.5, bandwidthFee: 0.9, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 780.7, billableTraffic: 680.7, trafficUnitPrice: 0.018, trafficCost: 12.25, configStatus: '同步失败', sync: '2026-04-07 07:52:42' },
+            { id: 'n6', period: '2026-04-06', ip: '172.104.46.72', provider: 'linode', accountId: 'linode-001', accountName: 'linode-jp-01', accountCode: 'linode-japan-account', country: '日本', serverRegion: 'jp-tyo-1', serverSpec: '2C4G', systemModel: 'Debian 12', nodeStatus: '已挂掉', lifecycle: '已挂掉', createdAt: '2026-02-18 07:00:00', deadAt: '2026-03-29 12:00:00', deadReason: '节点失效', recoverable: '不可恢复', billSource: '未配置', serverBilling: '包月', serverUnitPrice: 20, serverDurationHours: 0, serverCost: 0, systemFee: 0, bandwidthFee: 0, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 91.5, billableTraffic: 0, trafficUnitPrice: 0, trafficCost: 0, configStatus: '未配置', sync: '-' },
+            { id: 'n7', period: '2026-04-07', ip: '149.28.188.42', provider: 'vultr', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '香港', serverRegion: 'hongkong-2', serverSpec: '2C4G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-04-07 06:18:09', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '包月', serverUnitPrice: 32, serverDurationHours: 0, serverCost: 1.07, systemFee: 0.12, bandwidthFee: 0.3, trafficBilling: '包月', packageTraffic: 500, actualTraffic: 612.1, billableTraffic: 112.1, trafficUnitPrice: 0.02, trafficCost: 0.4, configStatus: '已配置', sync: '2026-04-07 06:18:09' },
+            { id: 'n8', period: '2026-04-07', ip: '18.183.77.55', provider: 'AWS', accountId: 'aws-002', accountName: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '8C16G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-02-15 08:00:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '系统费率计算', serverBilling: '按量', serverUnitPrice: 0.42, serverDurationHours: 24, serverCost: 10.08, systemFee: 0.3, bandwidthFee: 0.4, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 640.35, billableTraffic: 440.35, trafficUnitPrice: 0.012, trafficCost: 5.28, configStatus: '已配置', sync: '2026-04-06 22:17:51' }
+        ];
+
+        const dailyTrendData = [
+            { date: '2026-04-01', total: 1150, accountCost: 103, server: 640, traffic: 267, recharge: 1000 },
+            { date: '2026-04-02', total: 980, accountCost: 0, server: 610, traffic: 370, recharge: 2000 },
+            { date: '2026-04-03', total: 1040, accountCost: 25, server: 620, traffic: 395, recharge: 1500 },
+            { date: '2026-04-04', total: 920, accountCost: 18, server: 590, traffic: 312, recharge: 0 },
+            { date: '2026-04-05', total: 1310, accountCost: 0, server: 760, traffic: 550, recharge: 2000 },
+            { date: '2026-04-06', total: 860, accountCost: 0, server: 520, traffic: 340, recharge: 1000 },
+            { date: '2026-04-07', total: 970, accountCost: 0, server: 560, traffic: 410, recharge: 0 }
+        ];
+
+        const monthlyTrendData = [
+            { month: '2026-01', total: 8800, accountCost: 320, server: 5220, traffic: 3260, recharge: 4200 },
+            { month: '2026-02', total: 9620, accountCost: 320, server: 5660, traffic: 3640, recharge: 3600 },
+            { month: '2026-03', total: 10340, accountCost: 348, server: 6140, traffic: 3852, recharge: 4800 },
+            { month: '2026-04', total: 11080, accountCost: 326, server: 6535, traffic: 4219, recharge: 6500 }
+        ];
+
+        function esc(text) {
+            return String(text ?? '').replace(/[&<>"']/g, chr => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[chr]));
+        }
+        function money(value) {
+            return '$' + Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function parseDate(text) {
+            return new Date(String(text).replace(' ', 'T'));
+        }
+        function fmtDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        function fmtDateTime(dateObj) {
+            return `${fmtDate(dateObj)} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}:${String(dateObj.getSeconds()).padStart(2, '0')}`;
+        }
+        function getBalance(account) {
+            return Number(account.cumulativeRecharge || 0) - Number(account.cumulativeUse || 0);
+        }
+        function getAccount(accountId) {
+            return accounts.find(item => item.id === accountId);
+        }
+        function getAccountStatus(account) {
+            if (account.status === '停用') return '停用';
+            if (getBalance(account) <= Number(account.warnBalance || 0)) return '余额不足';
+            return '启用';
+        }
+        function tag(text) {
+            const cls = ['启用', '开启', '正常', '已配置'].includes(text) ? 'green' : ['停用', '关闭', '余额不足', '故障'].includes(text) ? 'orange' : 'red';
+            return `<span class="tag ${cls}">${esc(text)}</span>`;
+        }
+        function nodeCost(node) {
+            if (node.billSource === '未配置' || node.configStatus === '未配置') {
+                return { configured: false, server: 0, system: 0, bandwidth: 0, traffic: 0, total: 0, discounted: 0 };
+            }
+            const discountRate = Number(getAccount(node.accountId)?.discountRate || 1);
+            const server = Number(node.serverCost || 0);
+            const system = Number(node.systemFee || 0);
+            const bandwidth = Number(node.bandwidthFee || 0);
+            const traffic = Number(node.trafficCost || 0);
+            const total = server + system + bandwidth + traffic;
+            return { configured: true, server, system, bandwidth, traffic, total, discounted: total * discountRate };
+        }
+        function latestDataDate() {
+            return dailyTrendData.map(item => item.date).sort().slice(-1)[0];
+        }
+        function latestMonth() {
+            return monthlyTrendData.map(item => item.month).sort().slice(-1)[0];
+        }
+        function monthRange(month) {
+            const [year, m] = month.split('-').map(Number);
+            const first = new Date(year, m - 1, 1);
+            const last = new Date(year, m, 0);
+            return { start: fmtDate(first), end: fmtDate(last) };
+        }
+        function startOfWeek(dateText) {
+            const base = parseDate(`${dateText} 00:00:00`);
+            const day = base.getDay() || 7;
+            base.setDate(base.getDate() - day + 1);
+            return fmtDate(base);
+        }
+        function getHomeRange() {
+            const latest = latestDataDate();
+            if (homeState.rangeType === 'all') return { label: '全部数据', start: '', end: '' };
+            if (homeState.rangeType === 'today') return { label: '今日', start: latest, end: latest };
+            if (homeState.rangeType === 'yesterday') {
+                const date = parseDate(`${latest} 00:00:00`);
+                date.setDate(date.getDate() - 1);
+                const yesterday = fmtDate(date);
+                return { label: '昨日', start: yesterday, end: yesterday };
+            }
+            if (homeState.rangeType === 'week') return { label: '本周', start: startOfWeek(latest), end: latest };
+            if (homeState.rangeType === 'month') {
+                const range = monthRange(latestMonth());
+                return { label: '本月', start: range.start, end: range.end };
+            }
+            return { label: '自定义', start: homeState.startDate, end: homeState.endDate };
+        }
+        function homeInRange(dateText) {
+            const range = getHomeRange();
+            if (!range.start && !range.end) return true;
+            const day = String(dateText).slice(0, 10);
+            if (range.start && day < range.start) return false;
+            if (range.end && day > range.end) return false;
+            return true;
+        }
+        function daysBetween(start, end) {
+            const result = [];
+            const current = new Date(`${start}T00:00:00`);
+            const last = new Date(`${end}T00:00:00`);
+            while (current <= last) {
+                result.push(fmtDate(current));
+                current.setDate(current.getDate() + 1);
+            }
+            return result;
+        }
+        function renderCards(targetId, cards) {
+            const colors = ['blue', 'green', 'orange', 'cyan', 'purple', 'red'];
+            document.getElementById(targetId).innerHTML = cards.map((item, index) => `<div class="stat-card ${colors[index % colors.length]}"><div class="stat-title">${esc(item.title)}</div><div class="stat-value">${esc(item.value)}</div>${item.desc ? `<div class="stat-desc">${esc(item.desc)}</div>` : ''}</div>`).join('');
+        }
+        function getHomeMetrics() {
+            const visibleNodes = nodes.filter(node => homeInRange(node.period));
+            const rechargeAmount = rechargeRecords.filter(item => homeInRange(item.time)).reduce((sum, item) => sum + item.amount, 0);
+            const accountCost = accountCostLogs.filter(item => homeInRange(item.time)).reduce((sum, item) => sum + item.amount, 0);
+            const nodeSpend = visibleNodes.reduce((sum, node) => sum + nodeCost(node).discounted, 0);
+            const serverCost = visibleNodes.reduce((sum, node) => {
+                const cost = nodeCost(node);
+                return sum + cost.server + cost.system + cost.bandwidth;
+            }, 0);
+            const trafficCost = visibleNodes.reduce((sum, node) => sum + nodeCost(node).traffic, 0);
+            const currentBalance = accounts.reduce((sum, account) => sum + getBalance(account), 0);
+            const monthNewNodes = nodes.filter(node => homeInRange(node.createdAt)).length;
+            const currentAvailableNodes = nodes.filter(node => node.lifecycle === '正常').length;
+            const normalNodes = nodes.filter(node => node.lifecycle === '正常' && node.nodeStatus !== '已挂掉').length;
+            const deadNodes = nodes.filter(node => node.lifecycle === '已挂掉' && node.recoverable === '不可恢复').length;
+            const brokenNodes = nodes.filter(node => node.nodeStatus === '故障').length;
+            const unconfiguredNodes = nodes.filter(node => node.configStatus === '未配置').length;
+            const periodDeadNodes = nodes.filter(node => node.deadAt && homeInRange(node.deadAt)).length;
+            const totalNodes = nodes.length;
+            const lowBalanceAccounts = accounts.filter(account => getAccountStatus(account) === '余额不足').length;
+            return {
+                visibleNodes,
+                rechargeAmount,
+                accountCost,
+                nodeSpend,
+                serverCost,
+                trafficCost,
+                useAmount: accountCost + nodeSpend,
+                currentBalance,
+                monthNewNodes,
+                currentAvailableNodes,
+                normalNodes,
+                deadNodes,
+                brokenNodes,
+                unconfiguredNodes,
+                periodDeadNodes,
+                totalNodes,
+                lowBalanceAccounts
+            };
+        }
+        function renderHomeDateFilter() {
+            const items = [
+                ['all', '全部'],
+                ['yesterday', '昨日'],
+                ['week', '本周'],
+                ['today', '今日'],
+                ['month', '本月'],
+                ['custom', '自定义']
+            ];
+            document.getElementById('homeDateFilter').innerHTML = items.map(([key, label]) => `<button class="date-chip ${homeState.rangeType === key ? 'active' : ''}" onclick="setHomeDateRange('${key}')">${label}</button>`).join('') + `
+                <input class="date-input" type="date" id="homeStartDate" value="${esc(homeState.startDate)}" ${homeState.rangeType === 'custom' ? '' : 'disabled'} onchange="updateHomeCustomDate()">
+                <span style="color:#8c8c8c;">~</span>
+                <input class="date-input" type="date" id="homeEndDate" value="${esc(homeState.endDate)}" ${homeState.rangeType === 'custom' ? '' : 'disabled'} onchange="updateHomeCustomDate()">
+            `;
+        }
+        function setHomeDateRange(type) {
+            homeState.rangeType = type;
+            if (type !== 'custom') {
+                homeState.startDate = '';
+                homeState.endDate = '';
+            }
+            renderHomePage();
+        }
+        function updateHomeCustomDate() {
+            homeState.startDate = document.getElementById('homeStartDate').value;
+            homeState.endDate = document.getElementById('homeEndDate').value;
+            renderHomePage();
+        }
+        function renderHomeOverviewCards() {
+            const metrics = getHomeMetrics();
+            renderCards('homeOverviewCards', [
+                { title: '充值金额', value: money(metrics.rechargeAmount) },
+                { title: '使用金额', value: money(metrics.useAmount) },
+                { title: '新增节点数量', value: String(metrics.monthNewNodes) },
+                { title: '损耗节点数量', value: String(metrics.periodDeadNodes) }
+            ]);
+        }
+        function renderHomeRealtimeCards() {
+            const metrics = getHomeMetrics();
+            renderCards('homeRealtimeCards', [
+                { title: '当前余额', value: money(metrics.currentBalance) },
+                { title: '节点总数量', value: String(metrics.totalNodes) },
+                { title: '当前可用节点数量', value: String(metrics.currentAvailableNodes) },
+                { title: '余额不足账号数', value: String(metrics.lowBalanceAccounts) }
+            ]);
+        }
+        function renderLineChart(targetId, hintId, legendId, series, metricsList, range) {
+            const width = 720;
+            const height = 230;
+            const padding = { top: 20, right: 20, bottom: 34, left: 20 };
+            const innerWidth = width - padding.left - padding.right;
+            const innerHeight = height - padding.top - padding.bottom;
+            const maxValue = Math.max(...series.flatMap(item => metricsList.map(metric => item[metric.key] || 0)), 1);
+            const xStep = series.length > 1 ? innerWidth / (series.length - 1) : 0;
+            const getX = index => padding.left + index * xStep;
+            const getY = value => padding.top + innerHeight - (value / maxValue) * innerHeight;
+            const labels = series.map(item => item.date ? item.date.slice(5) : item.month);
+            const lines = metricsList.map(metric => {
+                const points = series.map((item, index) => `${getX(index)},${getY(item[metric.key] || 0)}`).join(' ');
+                const circles = series.map((item, index) => `<circle cx="${getX(index)}" cy="${getY(item[metric.key] || 0)}" r="3.5" fill="${metric.color}"></circle>`).join('');
+                return `<polyline fill="none" stroke="${metric.color}" stroke-width="3" points="${points}"></polyline>${circles}`;
+            }).join('');
+            const axisLabels = labels.map((label, index) => `<text x="${getX(index)}" y="${height - 8}" text-anchor="middle" class="line-axis-label">${esc(label)}</text>`).join('');
+            document.getElementById(hintId).innerText = '近7日数据';
+            document.getElementById(targetId).innerHTML = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="#f0f0f0"></line>${lines}${axisLabels}</svg>`;
+            document.getElementById(legendId).innerHTML = metricsList.map(item => `<div><span class="legend-dot" style="background:${item.color};"></span>${item.label}</div>`).join('');
+        }
+        function renderHomeCostOverview() {
+            const metrics = getHomeMetrics();
+            renderCards('homeCostCards', [
+                { title: '账号成本', value: money(metrics.accountCost) },
+                { title: '服务器成本', value: money(metrics.serverCost) },
+                { title: '流量成本', value: money(metrics.trafficCost) }
+            ]);
+
+            const range = getHomeRange();
+            let series = dailyTrendData.filter(item => homeInRange(item.date));
+            if (!series.length) {
+                series = dailyTrendData.slice();
+            }
+            series = series.slice(-7);
+            const fundMetrics = [
+                { key: 'recharge', label: '充值金额', color: '#722ed1' },
+                { key: 'total', label: '使用金额', color: '#1890ff' }
+            ];
+            const costMetrics = [
+                { key: 'accountCost', label: '账号成本', color: '#13c2c2' },
+                { key: 'server', label: '服务器成本', color: '#52c41a' },
+                { key: 'traffic', label: '流量成本', color: '#fa8c16' }
+            ];
+            renderLineChart('homeFundTrendChart', 'homeFundTrendHint', 'homeFundTrendLegend', series, fundMetrics, { start: series[0]?.date || '', end: series[series.length - 1]?.date || '' });
+            const maxValue = Math.max(...series.flatMap(item => costMetrics.map(metric => item[metric.key])), 1);
+            document.getElementById('homeCostTrendHint').innerText = '近7日数据';
+            document.getElementById('homeCostTrendChart').innerHTML = `<div class="chart-columns">${series.map(item => `<div class="column-group"><div class="column-bars">${costMetrics.map(metric => `<div class="chart-column" style="height:${Math.max(item[metric.key] / maxValue * 210, 4)}px;background:${metric.color};"></div>`).join('')}</div><div class="chart-label">${esc(item.date ? item.date.slice(5) : item.month)}</div></div>`).join('')}</div>`;
+            document.getElementById('homeCostTrendLegend').innerHTML = costMetrics.map(item => `<div><span class="legend-dot" style="background:${item.color};"></span>${item.label}</div>`).join('');
+        }
+        function renderHomeNodeOverview() {
+            const metrics = getHomeMetrics();
+            const nodeDist = [
+                ['全部节点数量', metrics.totalNodes, '#1890ff'],
+                ['可用节点', metrics.currentAvailableNodes, '#52c41a'],
+                ['已损耗节点', metrics.deadNodes, '#ff4d4f'],
+                ['未配置成本节点', metrics.unconfiguredNodes, '#722ed1']
+            ];
+            const distMax = Math.max(...nodeDist.map(item => item[1]), 1);
+            document.getElementById('homeNodeDistribution').innerHTML = nodeDist.map(item => `<div class="dist-row"><div class="dist-name">${item[0]}</div><div class="dist-track"><div class="dist-fill" style="width:${item[1] / distMax * 100}%;background:${item[2]};"></div></div><div class="dist-value">${item[1]}</div></div>`).join('');
+
+            const countryMap = {};
+            metrics.visibleNodes.filter(node => node.lifecycle === '正常').forEach(node => {
+                const cost = nodeCost(node);
+                if (!cost.configured) return;
+                countryMap[node.country] = (countryMap[node.country] || 0) + cost.discounted;
+            });
+            const total = Object.values(countryMap).reduce((sum, item) => sum + item, 0) || 1;
+            document.getElementById('homeCountryCostChart').innerHTML = Object.entries(countryMap).map(([key, value]) => `<div class="dist-row"><div class="dist-name">${esc(key)}</div><div class="dist-track"><div class="dist-fill" style="width:${value / total * 100}%;background:${countryColors[key] || '#1890ff'};"></div></div><div class="dist-value">${(value / total * 100).toFixed(1)}%</div></div>`).join('');
+        }
+        function renderHomeProviderOverview() {
+            const metrics = getHomeMetrics();
+            const providerMap = {};
+            accounts.forEach(account => {
+                providerMap[account.provider] = providerMap[account.provider] || { provider: account.provider, accounts: 0, nodes: 0, use: 0, balance: 0, dead: 0, available: 0, newNodes: 0, deadPeriod: 0 };
+                providerMap[account.provider].accounts += 1;
+                providerMap[account.provider].balance += getBalance(account);
+            });
+            nodes.forEach(node => {
+                const entry = providerMap[node.provider] || (providerMap[node.provider] = { provider: node.provider, accounts: 0, nodes: 0, use: 0, balance: 0, dead: 0, available: 0, newNodes: 0, deadPeriod: 0 });
+                entry.nodes += 1;
+                if (node.lifecycle === '正常') entry.available += 1;
+                if (node.lifecycle === '已挂掉') entry.dead += 1;
+                if (homeInRange(node.createdAt)) entry.newNodes += 1;
+                if (node.deadAt && homeInRange(node.deadAt)) entry.deadPeriod += 1;
+                entry.use += homeInRange(node.period) ? nodeCost(node).discounted : 0;
+            });
+            accountCostLogs.forEach(log => {
+                if (!homeInRange(log.time)) return;
+                const account = getAccount(log.accountId);
+                if (account) providerMap[account.provider].use += log.amount;
+            });
+            const providerRows = Object.values(providerMap).sort((a, b) => b.use - a.use);
+            document.getElementById('providerCostTable').innerHTML = `<thead><tr>${['排名', '服务商', '账号数', '可用节点数', '使用金额', '当前余额', '损耗节点数'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${providerRows.map((item, index) => `<tr><td>${index + 1}</td><td><a class="action-link" onclick="goToCostStatisticsWithFilter({ provider: '${item.provider}' })">${esc(item.provider)}</a></td><td>${item.accounts}</td><td>${item.available}</td><td>${money(item.use)}</td><td>${money(item.balance)}</td><td>${item.dead}</td></tr>`).join('')}</tbody>`;
+            const accountRows = accounts.slice().sort((a, b) => getBalance(a) - getBalance(b));
+            document.getElementById('providerBalanceTable').innerHTML = `<thead><tr>${['服务商', '账号名称', '当前余额', '账号状态', '操作'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${accountRows.map(account => `<tr><td>${esc(account.provider)}</td><td>${esc(account.name)}</td><td>${money(getBalance(account))}</td><td>${tag(getAccountStatus(account))}</td><td><a class="action-link" onclick="goToCostStatisticsWithFilter({ account: '${account.name}', accountId: '${account.id}', section: 'account' })">查看账号</a></td></tr>`).join('')}</tbody>`;
+            const providerNodeRows = providerRows.filter(item => item.available > 0);
+            const nodeDistMax = Math.max(...providerNodeRows.map(item => item.available), 1);
+            document.getElementById('providerNodeDistribution').innerHTML = providerNodeRows.map(item => `<div class="dist-row"><div class="dist-name">${esc(item.provider)}</div><div class="dist-track"><div class="dist-fill" style="width:${item.available / nodeDistMax * 100}%;background:${providerColors[item.provider] || '#1890ff'};"></div></div><div class="dist-value">${item.available}</div></div>`).join('');
+        }
+        function renderHomeCountryOverview() {
+            const countryMap = {};
+            nodes.forEach(node => {
+                countryMap[node.country] = countryMap[node.country] || { country: node.country, nodes: 0, available: 0, dead: 0, traffic: 0 };
+                const item = countryMap[node.country];
+                item.nodes += 1;
+                if (node.lifecycle === '正常') item.available += 1;
+                if (node.lifecycle === '已挂掉') item.dead += 1;
+                if (homeInRange(node.period)) {
+                    const cost = nodeCost(node);
+                    item.traffic += cost.traffic;
+                }
+            });
+            const rows = Object.values(countryMap).sort((a, b) => b.available - a.available);
+            document.getElementById('countryNodeTable').innerHTML = `<thead><tr>${['国家/地区', '节点数', '可用节点数', '已损耗节点数', '已用流量成本'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td><a class="action-link" onclick="goToCostStatisticsWithFilter({ country: '${item.country}', section: 'node' })">${esc(item.country)}</a></td><td>${item.nodes}</td><td>${item.available}</td><td>${item.dead}</td><td>${money(item.traffic)}</td></tr>`).join('')}</tbody>`;
+        }
+        function renderHomeFocusLists() {
+            const lowBalance = accounts.filter(account => getAccountStatus(account) === '余额不足' || account.status === '停用').sort((a, b) => getBalance(a) - getBalance(b));
+            document.getElementById('lowBalanceTable').innerHTML = `<thead><tr>${['服务商', '账号名称', '当前余额', '关联节点数', '最近充值时间', '操作'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${lowBalance.map(account => {
+                const lastRecharge = rechargeRecords.filter(item => item.accountId === account.id).sort((a, b) => parseDate(b.time) - parseDate(a.time))[0];
+                const nodeCount = nodes.filter(node => node.accountId === account.id).length;
+                return `<tr><td>${esc(account.provider)}</td><td>${esc(account.name)}</td><td>${money(getBalance(account))}</td><td>${nodeCount}</td><td>${lastRecharge ? esc(lastRecharge.time) : '-'}</td><td><a class="action-link" onclick="openRechargeModal('${account.id}')">去充值</a></td></tr>`;
+            }).join('')}</tbody>`;
+
+            const deadNodes = nodes.filter(node => node.deadAt).sort((a, b) => parseDate(b.deadAt) - parseDate(a.deadAt)).slice(0, 5);
+            document.getElementById('deadNodeTable').innerHTML = `<thead><tr>${['挂掉时间', '节点 IP', '服务商', '服务商账号', '国家/地区', '挂掉原因', '已产生费用', '操作'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${deadNodes.map(node => `<tr><td>${esc(node.deadAt)}</td><td>${esc(node.ip)}</td><td>${esc(node.provider)}</td><td>${esc(node.accountName)}</td><td>${esc(node.country)}</td><td>${esc(node.deadReason || '-')}</td><td>${money(nodeCost(node).discounted)}</td><td><a class="action-link" onclick="goToCostStatisticsWithFilter({ ip: '${node.ip}', section: 'node' })">查看节点</a></td></tr>`).join('')}</tbody>`;
+
+            const unconfiguredNodes = nodes.filter(node => node.configStatus === '未配置');
+            document.getElementById('unconfiguredNodeTable').innerHTML = `<thead><tr>${['节点 IP', '服务商', '服务商账号', '国家/地区', '服务器配置', '系统型号', '创建时间', '操作'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${unconfiguredNodes.map(node => `<tr><td>${esc(node.ip)}</td><td>${esc(node.provider)}</td><td>${esc(node.accountName)}</td><td>${esc(node.country)}</td><td>${esc(node.serverSpec)}</td><td>${esc(node.systemModel)}</td><td>${esc(node.createdAt)}</td><td><a class="action-link" onclick="goToCostStatisticsWithFilter({ ip: '${node.ip}', nodeId: '${node.id}', section: 'node', action: 'edit-node' })">配置成本</a></td></tr>`).join('')}</tbody>`;
+        }
+        function renderHomePage() {
+            renderHomeDateFilter();
+            renderHomeOverviewCards();
+            renderHomeRealtimeCards();
+            renderHomeCostOverview();
+            renderHomeNodeOverview();
+            renderHomeProviderOverview();
+            renderHomeCountryOverview();
+            renderHomeFocusLists();
+        }
+        function goToCostStatisticsWithFilter(filter) {
+            const params = new URLSearchParams();
+            if (filter.provider) params.set('provider', filter.provider);
+            if (filter.country) params.set('country', filter.country);
+            if (filter.account) params.set('account', filter.account);
+            if (filter.accountId) params.set('accountId', filter.accountId);
+            if (filter.ip) params.set('ip', filter.ip);
+            if (filter.section) params.set('section', filter.section);
+            if (filter.action) params.set('action', filter.action);
+            if (filter.nodeId) params.set('nodeId', filter.nodeId);
+            window.location.href = `/Users/chicken_fish/Desktop/个人作业/加速器/node-cost-statistics-demo.html?${params.toString()}`;
+        }
+        function openRechargeModal(accountId) {
+            const account = getAccount(accountId);
+            document.getElementById('rechargeProvider').value = account.provider;
+            document.getElementById('rechargeAccount').value = account.name;
+            document.getElementById('rechargeBalance').value = money(getBalance(account));
+            document.getElementById('rechargeAmount').value = '';
+            document.getElementById('rechargeRemark').value = '';
+            document.getElementById('rechargeModal').dataset.accountId = accountId;
+            document.getElementById('rechargeModal').style.display = 'flex';
+        }
+        function saveRecharge() {
+            const accountId = document.getElementById('rechargeModal').dataset.accountId;
+            const account = getAccount(accountId);
+            const amount = Number(document.getElementById('rechargeAmount').value || 0);
+            if (!amount) {
+                showToast('请填写充值金额');
+                return;
+            }
+            const beforeBalance = getBalance(account);
+            account.cumulativeRecharge += amount;
+            rechargeRecords.unshift({ id: `recharge-${Date.now()}`, accountId, provider: account.provider, accountName: account.name, amount, currency: account.currency, time: fmtDateTime(new Date()), operator: 'admin', beforeBalance, afterBalance: beforeBalance + amount, voucher: '', remark: document.getElementById('rechargeRemark').value });
+            closeModal('rechargeModal');
+            renderHomePage();
+            showToast('充值记录已添加');
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.style.display = 'block';
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        renderHomePage();
+    </script>
+</body>
+</html>
