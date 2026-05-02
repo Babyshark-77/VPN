@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节点成本统计 - 加速器后台管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 220px;
+            background: #fff;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .logo {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #e8e8e8;
+            color: #262626;
+        }
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: #1890ff;
+            border-radius: 50% 50% 50% 0;
+            margin-right: 8px;
+            transform: rotate(-45deg);
+        }
+        .menu { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .menu.hidden { display: none; }
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #595959;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .menu-item:hover, .menu-group.active .menu-item { color: #1890ff; }
+        .menu-sub {
+            padding: 8px 14px 8px 42px;
+            font-size: 14px;
+            color: #595959;
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+        }
+        .menu-sub:hover { color: #1890ff; }
+        .menu-sub.active {
+            background: #e6f7ff;
+            color: #1890ff;
+            border-right: 3px solid #1890ff;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+        }
+        .header {
+            height: 50px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 14px;
+            color: #8c8c8c;
+            flex-shrink: 0;
+        }
+        .breadcrumb span { margin-right: 8px; }
+        .breadcrumb .current { color: #262626; font-weight: 500; }
+        .page-tabs {
+            display: flex;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 0 20px;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .page-tab {
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #595959;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .page-tab.active { color: #1890ff; border-bottom-color: #1890ff; font-weight: 500; }
+        .content-body { flex: 1; padding: 20px; overflow-y: auto; background: #fff; }
+        .page-title { font-size: 22px; font-weight: 600; color: #262626; margin-bottom: 8px; }
+        .page-subtitle { color: #8c8c8c; font-size: 14px; margin-bottom: 18px; }
+        .filter-area {
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+            padding: 18px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 14px 16px; margin-bottom: 14px; align-items: center; }
+        .filter-row:last-child { margin-bottom: 0; }
+        .filter-item { display: flex; align-items: center; }
+        .filter-label { font-size: 14px; color: #595959; margin-right: 8px; white-space: nowrap; }
+        .filter-input, .filter-select, .form-input, .form-select, .form-textarea {
+            padding: 6px 11px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #262626;
+            background: #fff;
+            min-width: 132px;
+        }
+        .filter-input:focus, .filter-select:focus, .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #40a9ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.12);
+        }
+        .btn {
+            padding: 6px 14px;
+            border-radius: 4px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all .2s;
+            white-space: nowrap;
+        }
+        .btn:hover { color: #1890ff; border-color: #1890ff; }
+        .btn-primary { background: #1890ff; color: #fff; border-color: #1890ff; }
+        .btn-primary:hover { background: #40a9ff; color: #fff; border-color: #40a9ff; }
+        .btn-success { background: #52c41a; color: #fff; border-color: #52c41a; }
+        .btn-success:hover { background: #73d13d; color: #fff; border-color: #73d13d; }
+        .btn-warning { background: #fa8c16; color: #fff; border-color: #fa8c16; }
+        .btn-warning:hover { background: #ffa940; color: #fff; border-color: #ffa940; }
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(170px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 18px;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before { content: ""; position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: #1890ff; }
+        .stat-card.green::before { background: #52c41a; }
+        .stat-card.orange::before { background: #fa8c16; }
+        .stat-card.red::before { background: #ff4d4f; }
+        .stat-card.purple::before { background: #722ed1; }
+        .stat-card.cyan::before { background: #13c2c2; }
+        .stat-title { color: #8c8c8c; font-size: 13px; margin-bottom: 8px; }
+        .stat-value { font-size: 26px; color: #262626; font-weight: 700; margin-bottom: 6px; }
+        .stat-desc { display: none; }
+        .stat-value.warning { color: #fa541c; }
+        .reference-panel, .chart-card, .section-panel {
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            background: #fff;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.05);
+        }
+        .panel-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title { color: #262626; font-size: 16px; font-weight: 600; }
+        .reference-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1px;
+            background: #f0f0f0;
+        }
+        .reference-item { background: #fff; padding: 16px 18px; }
+        .reference-label { font-size: 12px; color: #8c8c8c; margin-bottom: 8px; }
+        .reference-value { color: #262626; font-weight: 700; font-size: 22px; }
+        .notice {
+            margin: 16px 18px 18px;
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            color: #0050b3;
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 12px 14px;
+            border-radius: 4px;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .chart-body { padding: 18px; min-height: 320px; }
+        .trend-chart {
+            height: 240px;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 8px 4px 28px;
+            overflow: hidden;
+        }
+        .chart-columns {
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 14px;
+            align-items: end;
+            overflow: hidden;
+        }
+        .column-group {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            overflow: hidden;
+        }
+        .column-bars {
+            width: 100%;
+            max-width: 52px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 2px;
+            overflow: hidden;
+        }
+        .chart-column {
+            width: auto;
+            border-radius: 4px 4px 0 0;
+            max-height: 200px;
+            flex: 1 1 0;
+            min-width: 0;
+        }
+        .chart-label {
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1;
+            color: #8c8c8c;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .trend-column { height: 100%; display: flex; align-items: end; gap: 3px; justify-content: center; position: relative; }
+        .trend-bar { width: 10px; border-radius: 3px 3px 0 0; min-height: 12px; }
+        .trend-total { background: #1890ff; }
+        .trend-monthly { background: #52c41a; }
+        .trend-traffic { background: #fa8c16; }
+        .trend-label { position: absolute; bottom: -24px; font-size: 12px; color: #8c8c8c; white-space: nowrap; }
+        .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: #595959; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .distribution { height: 220px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+        .dist-row { display: grid; grid-template-columns: 64px 1fr 62px; gap: 10px; align-items: center; font-size: 13px; }
+        .dist-name { color: #595959; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dist-track { background: #f5f5f5; height: 10px; border-radius: 10px; overflow: hidden; }
+        .dist-fill { height: 100%; border-radius: 10px; background: #1890ff; }
+        .dist-value { color: #262626; text-align: right; }
+        .tabs { display: flex; border-bottom: 1px solid #e8e8e8; padding: 0 18px; }
+        .tab {
+            padding: 13px 18px;
+            color: #595959;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            font-size: 14px;
+        }
+        .tab.active { color: #1890ff; border-bottom-color: #1890ff; font-weight: 500; }
+        .table-tools { padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; color: #8c8c8c; font-size: 13px; }
+        .data-table-wrapper { overflow-x: auto; border-top: 1px solid #f0f0f0; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        .data-table th {
+            background: #fafafa;
+            padding: 12px 12px;
+            font-weight: 500;
+            color: #595959;
+            border-bottom: 1px solid #e8e8e8;
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e8e8e8;
+            color: #262626;
+            white-space: nowrap;
+        }
+        .data-table tbody tr:hover { background: #f5f5f5; }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #e6f7ff;
+            color: #1890ff;
+            font-size: 12px;
+        }
+        .tag.green { background: #f6ffed; color: #52c41a; }
+        .tag.orange { background: #fff7e6; color: #fa8c16; }
+        .tag.red { background: #fff1f0; color: #ff4d4f; }
+        .tag.gray { background: #f5f5f5; color: #8c8c8c; }
+        .action-link { color: #1890ff; cursor: pointer; margin-right: 10px; text-decoration: none; }
+        .action-link:hover { color: #40a9ff; text-decoration: underline; }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 8px;
+            width: 760px;
+            max-width: calc(100vw - 40px);
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,.18);
+        }
+        .modal.large { width: 920px; }
+        .modal.medium { width: 680px; }
+        .modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { font-size: 16px; font-weight: 600; color: #262626; }
+        .modal-close { cursor: pointer; font-size: 20px; color: #8c8c8c; }
+        .modal-close:hover { color: #262626; }
+        .modal-body { padding: 22px 24px; overflow-y: auto; }
+        .modal-footer {
+            padding: 14px 24px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 14px;
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+            margin-bottom: 18px;
+        }
+        .info-label { color: #8c8c8c; font-size: 12px; margin-bottom: 5px; }
+        .info-value { color: #262626; font-size: 14px; font-weight: 500; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 20px; }
+        .form-item { display: flex; flex-direction: column; gap: 7px; }
+        .form-label { color: #595959; font-size: 14px; }
+        .form-input, .form-select, .form-textarea { width: 100%; min-width: 0; }
+        .form-textarea { min-height: 74px; resize: vertical; grid-column: span 2; }
+        .calc-box {
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+            padding: 14px;
+            color: #595959;
+            font-size: 14px;
+            line-height: 2;
+        }
+        .calc-total { margin-top: 10px; color: #262626; font-weight: 700; font-size: 16px; }
+        .toast {
+            position: fixed;
+            top: 72px;
+            right: 24px;
+            background: #262626;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 4px;
+            display: none;
+            z-index: 1200;
+            font-size: 14px;
+        }
+        @media (max-width: 1380px) {
+            .overview-grid { grid-template-columns: repeat(3, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
+            .reference-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 900px) {
+            body { display: block; overflow: auto; height: auto; }
+            .sidebar { width: 100%; height: auto; }
+            .main-content { min-height: 100vh; }
+            .overview-grid, .reference-grid, .form-grid, .info-grid { grid-template-columns: 1fr; }
+            .content-body { padding: 14px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo"><div class="logo-icon"></div>加速器后台管理</div>
+        <div class="menu">
+            <a class="menu-item" href="/Users/chicken_fish/Desktop/个人作业/加速器/system-home-demo.html" style="text-decoration:none;"><span>系统首页</span></a>
+            <div class="menu-group active">
+                <div class="menu-item"><span>节点管理</span><span>v</span></div>
+                <div class="menu-sub">节点列表</div>
+                <div class="menu-sub">要限节点</div>
+                <div class="menu-sub">故障节点</div>
+                <div class="menu-sub">流量预警</div>
+                <div class="menu-sub">在线用户</div>
+                <div class="menu-sub">节点测速</div>
+                <a class="menu-sub active" href="/Users/chicken_fish/Desktop/个人作业/加速器/node-cost-statistics-demo.html">节点成本统计</a>
+            </div>
+            <div class="menu-item"><span>应用管理</span></div>
+            <div class="menu-item"><span>防护日志</span></div>
+            <div class="menu-item"><span>管理人员</span></div>
+            <div class="menu-item"><span>系统设置</span></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="breadcrumb">
+                <span>&lt;</span><span>系统首页</span><span>/</span><span>节点管理</span><span>/</span><span class="current">节点成本统计</span>
+            </div>
+        </div>
+        <div class="page-tabs">
+            <div class="page-tab">节点列表</div>
+            <div class="page-tab">在线用户</div>
+            <div class="page-tab active">节点成本统计</div>
+        </div>
+        <div class="content-body">
+            <div class="page-title">节点成本统计</div>
+            <div class="page-subtitle" style="display:none;"></div>
+
+            <div class="filter-area">
+                <div class="filter-row">
+                    <div class="filter-item" style="display:none;">
+                        <span class="filter-label">统计维度</span>
+                        <select class="filter-select" id="dimension" onchange="handleDimensionChange()">
+                            <option value="day">日统计</option>
+                            <option value="month">月统计</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" id="dayRange">
+                        <span class="filter-label">时间范围</span>
+                        <input class="filter-input" type="date" id="startDate" value="">
+                        <span style="margin:0 8px;color:#d9d9d9;">-</span>
+                        <input class="filter-input" type="date" id="endDate" value="">
+                    </div>
+                    <div class="filter-item" id="monthRange" style="display:none;">
+                        <span class="filter-label">月份范围</span>
+                        <input class="filter-input" type="month" id="startMonth" value="2026-01">
+                        <span style="margin:0 8px;color:#d9d9d9;">-</span>
+                        <input class="filter-input" type="month" id="endMonth" value="2026-04">
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">服务商</span>
+                        <select class="filter-select" id="providerFilter">
+                            <option value="">全部</option><option>AWS</option><option>阿里云</option><option>腾讯云</option><option>linode</option><option>vultr</option><option>其他</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">国家/地区</span>
+                        <select class="filter-select" id="countryFilter">
+                            <option value="">全部</option><option>日本</option><option>新加坡</option><option>香港</option><option>韩国</option><option>美国</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">节点 IP</span>
+                        <input class="filter-input" id="ipFilter" placeholder="请输入节点 IP">
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <span class="filter-label">服务器计费方式</span>
+                        <select class="filter-select" id="serverBillingFilter">
+                            <option value="">全部</option><option>包月</option><option>按量</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">流量计费方式</span>
+                        <select class="filter-select" id="trafficBillingFilter">
+                            <option value="">全部</option><option>包月</option><option>按量</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">账单来源</span>
+                        <select class="filter-select" id="billSourceFilter">
+                            <option value="">全部</option><option>服务商账单接口</option><option>系统费率计算</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">节点状态</span>
+                        <select class="filter-select" id="statusFilter">
+                            <option value="">全部</option><option>开启</option><option>关闭</option><option>已挂掉</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">配置状态</span>
+                        <select class="filter-select" id="configFilter">
+                            <option value="">全部</option><option>已配置</option><option>未配置</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">服务商账号</span>
+                        <input class="filter-input" id="accountFilter" placeholder="请输入服务商账号">
+                    </div>
+                    <div class="filter-item">
+                        <span class="filter-label">账号状态</span>
+                        <select class="filter-select" id="accountStatusFilter">
+                            <option value="">全部</option><option>启用</option><option>停用</option><option>余额不足</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-item" style="display:none;">
+                        <span class="filter-label">节点状态</span>
+                        <select class="filter-select" id="lifecycleFilter">
+                            <option value="">全部</option><option>正常</option><option>已挂掉</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" style="display:none;">
+                        <span class="filter-label">是否新增节点</span>
+                        <select class="filter-select" id="newNodeFilter">
+                            <option value="">全部</option><option>本期新增</option><option>非本期新增</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" style="display:none;">
+                        <span class="filter-label">是否挂掉节点</span>
+                        <select class="filter-select" id="deadNodeFilter">
+                            <option value="">全部</option><option>本期挂掉</option><option>历史挂掉</option><option>未挂掉</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyFilters()">搜索</button>
+                    <button class="btn" onclick="resetFilters()">重置</button>
+                    <div style="position:relative;">
+                        <button class="btn" onclick="toggleExportMenu()">导出</button>
+                        <div id="exportMenu" style="display:none;position:absolute;top:42px;left:0;background:#fff;border:1px solid #f0f0f0;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.12);padding:6px;min-width:160px;z-index:20;">
+                            <div class="action-link" style="display:block;margin:0;padding:8px 10px;color:#262626;" onclick="exportMock('account')">导出账号成本数据</div>
+                            <div class="action-link" style="display:block;margin:0;padding:8px 10px;color:#262626;" onclick="exportMock('node')">导出节点消耗数据</div>
+                            <div class="action-link" style="display:block;margin:0;padding:8px 10px;color:#262626;" onclick="exportMock('all')">导出全部数据</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="syncProviderPrices()">同步服务商账单</button>
+                    <button class="btn btn-warning" onclick="openAccountModal()">新增账号</button>
+                    <button class="btn btn-warning" onclick="openCostModal()">新增节点配置</button>
+                    <button class="btn" onclick="openBatchImportModal()">批量导入配置</button>
+                    <div class="filter-item" style="margin-left:auto;">
+                        <span class="filter-label">当前角色</span>
+                        <select class="filter-select" id="roleSwitch" onchange="switchRole(this.value)">
+                            <option value="ops">普通运维</option>
+                            <option value="finance">财务/管理员</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-panel" style="padding:18px;">
+                <div class="panel-header" style="padding:0 0 14px 0;"><div class="panel-title">筛选期数据</div></div>
+                <div class="overview-grid" id="periodOverviewCards"></div>
+                <div class="panel-header" style="padding:20px 0 14px 0;"><div class="panel-title">当前快照数据</div></div>
+                <div class="overview-grid" id="snapshotOverviewCards"></div>
+            </div>
+
+            <div class="reference-panel" style="display:none;">
+                <div class="panel-header"><div class="panel-title">在线用户与节点连接参考</div></div>
+                <div class="reference-grid" id="referenceCards"></div>
+                <div class="notice">APP 在线用户数包含打开 APP 但未连接节点的用户，因此不能直接用节点连接数代表真实在线用户数。成本统计以节点价格、服务商账单、流量数据为准，用户数据仅作为运营参考。</div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="panel-header"><div class="panel-title">成本趋势图</div><span id="trendHint" style="color:#8c8c8c;font-size:13px;">仅7日成本</span></div>
+                    <div class="chart-body">
+                        <div class="trend-chart" id="trendChart"></div>
+                        <div class="legend" id="trendLegend">
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="panel-header"><div class="panel-title">服务商成本分布</div></div>
+                    <div class="chart-body"><div class="distribution" id="providerChart"></div></div>
+                </div>
+                <div class="chart-card">
+                    <div class="panel-header"><div class="panel-title">国家/地区成本分布</div></div>
+                    <div class="chart-body"><div class="distribution" id="countryChart"></div></div>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">账号成本区</div>
+                        <div style="display:none;"></div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn" onclick="openAccountModal()" style="display:none;">新增账号</button>
+                        <button class="btn" onclick="exportMock('account')">导出账号数据</button>
+                    </div>
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" id="accountCostTable"></table>
+                </div>
+            </div>
+
+            <div class="section-panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">节点消耗区</div>
+                        <div style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('nodes', this)">节点消耗汇总</div>
+                    <div class="tab" onclick="switchTab('providers', this)" style="display:none;">服务商消耗汇总</div>
+                    <div class="tab" onclick="switchTab('countries', this)" style="display:none;">国家/地区消耗汇总</div>
+                </div>
+                <div class="table-tools">
+                    <span id="tableSummary" style="display:none;">共 0 条数据</span>
+                    <span id="permissionHint" style="display:none;">当前账号无折扣查看权限，仅展示原始成本。</span>
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" id="dataTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="costModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">新增节点配置</div>
+                <div class="modal-close" onclick="closeModal('costModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="tabs" style="padding:0;margin-bottom:16px;">
+                    <div class="tab active" id="settingBasicTab" onclick="switchSettingTab('basic')">基础信息</div>
+                    <div class="tab" id="settingCostTab" onclick="switchSettingTab('cost')">费用组成</div>
+                    <div class="tab" id="settingDiscountTab" onclick="switchSettingTab('discount')" style="display:none;">折扣配置</div>
+                    <div class="tab" id="settingPreviewTab" onclick="switchSettingTab('preview')" style="display:none;">计算预览</div>
+                </div>
+                <div id="basicSettingPanel">
+                    <div class="form-grid">
+                        <div class="form-item"><label class="form-label">节点 IP</label><input class="form-input" id="nodeIp" value="45.76.12.18"></div>
+                        <div class="form-item"><label class="form-label">服务商</label><div style="display:flex;gap:8px;align-items:center;"><select class="form-select" id="nodeProvider" onchange="handleProviderChange()" style="flex:1;"><option>AWS</option><option>阿里云</option><option>腾讯云</option><option>linode</option><option>vultr</option><option>其他</option></select><button class="btn" type="button" onclick="openServiceProviderManage()" style="display:none;">管理</button></div></div>
+                        <div class="form-item"><label class="form-label">国家/地区</label><select class="form-select" id="nodeCountry"><option>日本</option><option>新加坡</option><option>香港</option><option>美国</option><option>韩国</option></select></div>
+                        <div class="form-item"><label class="form-label">服务商账号</label><select class="form-select" id="nodeCloudAccount" onchange="handleAccountChange()" style="flex:1;"></select></div>
+                        <div class="form-item"><label class="form-label">服务器地区</label><div style="display:flex;gap:8px;align-items:center;"><select class="form-select" id="nodeRegion" style="flex:1;"></select><button class="btn" type="button" onclick="openResourceDictModal('region')" style="display:none;">字典</button></div></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">可用区</label><select class="form-select" id="nodeZone"><option>ap-northeast-1a</option><option>ap-northeast-1c</option><option>cn-hongkong-b</option><option>us-west-2a</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">实例 ID</label><input class="form-input" id="nodeInstanceId" value="i-0a32demo"></div>
+                        <div class="form-item"><label class="form-label">服务器配置</label><div style="display:flex;gap:8px;align-items:center;"><select class="form-select" id="nodeSpec" style="flex:1;"></select><button class="btn" type="button" onclick="openResourceDictModal('spec')" style="display:none;">字典</button></div></div>
+                        <div class="form-item"><label class="form-label">系统型号</label><div style="display:flex;gap:8px;align-items:center;"><select class="form-select" id="nodeSystemModel" style="flex:1;"></select><button class="btn" type="button" onclick="openResourceDictModal('system')" style="display:none;">字典</button></div></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">节点状态</label><select class="form-select" id="nodeStatus"><option>开启</option><option>关闭</option><option>故障</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">生效时间</label><input class="form-input" id="nodeEffectiveDate" type="date" value="2026-04-28"></div>
+                        <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="nodeRemark"></textarea></div>
+                    </div>
+                    <div class="notice" style="margin:16px 0 0 0;display:none;">地区、配置、系统型号默认来自接口同步结果；若服务商未配置接口，则来自手动维护的资源字典。</div>
+                </div>
+                <div id="costSettingPanel" style="display:none;">
+                    <div class="notice" id="feeStructureNotice" style="margin:0 0 16px 0;">当前服务商支持自定义费用归类。</div>
+                    <div class="form-grid">
+                        <div class="form-item"><label class="form-label">价格数据来源</label><select class="form-select" id="cfgPriceSource" onchange="togglePriceSourceMode()"><option>对接服务商接口获取</option><option>手动价格配置</option></select></div>
+                        <div class="form-item" id="cfgApiKeyWrap" style="display:none;"><label class="form-label">API Key</label><input class="form-input" id="cfgApiKey" value="AKIA****APAC"></div>
+                        <div class="form-item" id="cfgSecretWrap" style="display:none;"><label class="form-label">Secret</label><input class="form-input" id="cfgSecret" value="****"></div>
+                        <div class="form-item" id="cfgServerBillingWrap"><label class="form-label">服务器计费方式</label><select class="form-select" id="cfgServerBilling" onchange="renderNodeConfigPreview()"><option>包月</option><option>按量</option></select></div>
+                        <div class="form-item" id="cfgServerPriceBaseWrap" style="display:none;"><label class="form-label">服务器配置价格基数</label><select class="form-select" id="cfgServerPriceBase"><option>按服务商+地区+配置自动匹配</option><option>手动覆盖</option></select></div>
+                        <div class="form-item" id="cfgServerMonthlyWrap"><label class="form-label">服务器包月价</label><input class="form-input" id="cfgServerMonthly" type="number" step="0.01" value="40"></div>
+                        <div class="form-item" id="cfgServerHourlyWrap" style="display:none;"><label class="form-label">服务器小时单价</label><input class="form-input" id="cfgServerHourly" type="number" step="0.01" value="0.12"></div>
+                        <div class="form-item" id="cfgBandwidthIncludedWrap" style="display:none;"><label class="form-label">是否包含带宽费用</label><select class="form-select" id="cfgBandwidthIncluded" onchange="syncTrafficModeWithBandwidth()"><option>是</option><option>否</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">服务器成本归类</label><input class="form-input" value="计入服务器成本" readonly></div>
+                        <div class="form-item" id="cfgTrafficBillingWrap"><label class="form-label">流量计费方式</label><select class="form-select" id="cfgTrafficBilling" onchange="renderNodeConfigPreview()"><option>已包含在服务器费用中</option><option>按量</option><option>包月</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">流量成本归类</label><input class="form-input" value="计入流量成本" readonly></div>
+                        <div class="form-item" id="cfgPackageTrafficWrap" style="display:none;"><label class="form-label">套餐流量</label><input class="form-input" id="cfgPackageTraffic" type="number" step="1" value="500"></div>
+                        <div class="form-item" id="cfgTrafficMonthlyWrap" style="display:none;"><label class="form-label">流量包月价</label><input class="form-input" id="cfgTrafficMonthly" type="number" step="0.01" value="12"></div>
+                        <div class="form-item" id="cfgTrafficUnitWrap" style="display:none;"><label class="form-label">流量单价</label><input class="form-input" id="cfgTrafficUnit" type="number" step="0.001" value="0.02"></div>
+                        <div class="form-item" id="cfgFreeTrafficWrap" style="display:none;"><label class="form-label">免费流量额度</label><input class="form-input" id="cfgFreeTraffic" type="number" step="1" value="100"></div>
+                        <div class="form-item" id="cfgOverageUnitWrap" style="display:none;"><label class="form-label">超出流量单价</label><input class="form-input" id="cfgOverageUnit" type="number" step="0.001" value="0.025"></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">价格规则配置</label><div style="display:flex;gap:8px;align-items:center;"><input class="form-input" value="支持按服务商/账号/地区/配置/系统型号匹配" readonly style="flex:1;"><button class="btn" type="button" onclick="openPriceRuleModal()" style="display:none;">规则管理</button></div></div>
+                    </div>
+                </div>
+                <div id="discountSettingPanel" style="display:none;">
+                    <div class="form-grid">
+                        <div class="form-item"><label class="form-label">折扣类型</label><select class="form-select" id="cfgDiscountType" onchange="renderNodeConfigPreview()"><option>按比例折扣</option><option>固定优惠金额</option><option>无折扣</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">服务商折扣</label><input class="form-input" id="cfgProviderDiscount" type="number" step="0.01" value="90"></div>
+                        <div class="form-item"><label class="form-label">服务器成本折扣</label><input class="form-input" id="cfgServerDiscount" type="number" step="0.01" value="90"></div>
+                        <div class="form-item"><label class="form-label">流量成本折扣</label><input class="form-input" id="cfgTrafficDiscount" type="number" step="0.01" value="100"></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">折扣生效范围</label><select class="form-select" id="cfgDiscountScope"><option>当前节点</option><option>当前服务商</option><option>当前服务商账号</option><option>当前地区</option><option>当前配置</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">折扣查看权限</label><select class="form-select" id="cfgDiscountPermission"><option>仅财务/管理员可见</option><option>全部可见</option></select></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">折扣生效时间</label><input class="form-input" id="cfgDiscountStart" type="date" value="2026-04-28"></div>
+                        <div class="form-item" style="display:none;"><label class="form-label">折扣失效时间</label><input class="form-input" id="cfgDiscountEnd" type="date" value="2026-12-31"></div>
+                        <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="cfgDiscountRemark"></textarea></div>
+                    </div>
+                    <div class="notice" style="margin:16px 0 0 0;display:none;">普通运维账号不会展示折扣率、折扣金额、折后金额；财务/管理员可见完整折扣信息。</div>
+                </div>
+                <div id="previewSettingPanel" style="display:none;">
+                    <div class="info-grid" id="nodeConfigPreview"></div>
+                    <div class="calc-box" id="nodeConfigPreviewDetail"></div>
+                    <div class="notice" style="margin:16px 0 0 0;">保存后，该配置将从生效时间开始参与日/月成本统计。</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('costModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveCostConfig()">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="batchImportModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">批量导入节点配置</div>
+                <div class="modal-close" onclick="closeModal('batchImportModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="filter-row" style="margin-bottom:16px;">
+                    <button class="btn" type="button" onclick="showToast('已生成导入模板：node-config-template.xlsx')">下载模板</button>
+                    <button class="btn btn-primary" type="button" onclick="mockUploadImportFile()">上传文件</button>
+                    <button class="btn" type="button" onclick="applyImportRows('passed')">仅导入通过数据</button>
+                    <button class="btn" type="button" onclick="showToast('异常结果已导出')">导出异常结果</button>
+                </div>
+                <div class="data-table-wrapper" style="border:1px solid #f0f0f0;">
+                    <table class="data-table" id="batchImportTable"></table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('batchImportModal')">取消</button>
+                <button class="btn" onclick="mockUploadImportFile()">全部重新上传</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal medium">
+            <div class="modal-header">
+                <div class="modal-title">账单明细</div>
+                <div class="modal-close" onclick="closeModal('detailModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="info-grid" id="detailNodeInfo"></div>
+                <div class="notice" id="detailNotice" style="display:none;margin:0 0 12px 0;"></div>
+                <div class="data-table-wrapper" id="detailTableWrap" style="border:1px solid #f0f0f0;">
+                    <table class="data-table" id="detailTable"></table>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('detailModal')">知道了</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="providerModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">服务商管理</div>
+                <div class="modal-close" onclick="closeModal('providerModal')">×</div>
+            </div>
+            <div class="modal-body" id="providerModalBody"></div>
+            <div class="modal-footer">
+                <button class="btn" onclick="openCloudAccountModal()">配置云资源账号</button>
+                <button class="btn" onclick="showToast('服务商资源同步任务已创建')">同步资源</button>
+                <button class="btn btn-primary" onclick="closeModal('providerModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cloudAccountModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">服务商账号</div>
+                <div class="modal-close" onclick="closeModal('cloudAccountModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid" style="margin-bottom:16px;">
+                    <div class="form-item"><label class="form-label">服务商</label><select class="form-select" id="newAccountProvider"><option>AWS</option><option>阿里云</option><option>腾讯云</option><option>linode</option><option>vultr</option><option>其他</option></select></div>
+                    <div class="form-item"><label class="form-label">账号 ID</label><input class="form-input" id="newAccountId" placeholder="请输入账号 ID"></div>
+                    <div class="form-item"><label class="form-label">API Key</label><input class="form-input" id="newAccountApiKey" placeholder="请输入 API Key"></div>
+                    <div class="form-item"><label class="form-label">Secret</label><input class="form-input" id="newAccountSecret" placeholder="请输入 Secret"></div>
+                </div>
+                <div class="data-table-wrapper" style="border:1px solid #f0f0f0;">
+                    <table class="data-table" id="cloudAccountTable"></table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="saveProviderAccount()">保存并同步账号</button>
+                <button class="btn btn-primary" onclick="closeModal('cloudAccountModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resourceDictModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">资源字典管理</div>
+                <div class="modal-close" onclick="closeModal('resourceDictModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="tabs" style="padding:0;margin-bottom:16px;">
+                    <div class="tab active" id="dictRegionTab" onclick="switchDictTab('region')">服务器地区</div>
+                    <div class="tab" id="dictSpecTab" onclick="switchDictTab('spec')">服务器配置</div>
+                    <div class="tab" id="dictSystemTab" onclick="switchDictTab('system')">系统型号</div>
+                </div>
+                <div class="data-table-wrapper" style="border:1px solid #f0f0f0;">
+                    <table class="data-table" id="resourceDictTable"></table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="showToast('已新增资源字典条目')">新增字典项</button>
+                <button class="btn btn-primary" onclick="closeModal('resourceDictModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="priceRuleModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">价格规则配置</div>
+                <div class="modal-close" onclick="closeModal('priceRuleModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="data-table-wrapper" style="border:1px solid #f0f0f0;">
+                    <table class="data-table" id="priceRuleTable"></table>
+                </div>
+                <div class="notice" style="margin:16px 0 0 0;">规则优先级：节点单独配置 &gt; 服务商账号 + 地区 + 配置 + 系统型号规则 &gt; 服务商 + 地区 + 配置规则 &gt; 服务商默认规则。</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="showToast('已新增价格规则')">新增规则</button>
+                <button class="btn btn-primary" onclick="closeModal('priceRuleModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title" id="accountModalTitle">新增账号</div>
+                <div class="modal-close" onclick="closeModal('accountModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-item"><label class="form-label">服务商</label><select class="form-select" id="acctProvider"></select></div>
+                    <div class="form-item"><label class="form-label">账号名称</label><input class="form-input" id="acctName"></div>
+                    <div class="form-item"><label class="form-label">账号 ID</label><input class="form-input" id="acctId"></div>
+                    <div class="form-item"><label class="form-label">云资源账号 Key</label><input class="form-input" id="acctKey"></div>
+                    <div class="form-item"><label class="form-label">云资源账号 Secret</label><input class="form-input" id="acctSecret"></div>
+                    <div class="form-item"><label class="form-label">默认国家/地区</label><select class="form-select" id="acctCountry"><option>日本</option><option>新加坡</option><option>香港</option><option>美国</option><option>韩国</option></select></div>
+                    <div class="form-item"><label class="form-label">默认服务器地区</label><input class="form-input" id="acctRegion"></div>
+                    <div class="form-item"><label class="form-label">账号基础费用</label><input class="form-input" id="acctBaseFee" type="number" step="0.01"></div>
+                    <div class="form-item"><label class="form-label">账号折扣类型</label><select class="form-select" id="acctDiscountType"><option>无折扣</option><option>比例折扣</option><option>固定优惠金额</option></select></div>
+                    <div class="form-item"><label class="form-label">账号折扣</label><div style="display:flex;align-items:center;gap:8px;"><input class="form-input" id="acctDiscount" type="number" step="0.01"><span style="color:#8c8c8c;">%</span></div></div>
+                    <div class="form-item" style="display:none;"><label class="form-label">折扣查看权限</label><select class="form-select" id="acctDiscountPermission"><option>仅财务/管理员可见</option><option>全部可见</option></select></div>
+                    <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="acctRemark"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('accountModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveAccount()">保存账号</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rechargeModal">
+        <div class="modal medium">
+            <div class="modal-header">
+                <div class="modal-title">添加充值记录</div>
+                <div class="modal-close" onclick="closeModal('rechargeModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-item"><label class="form-label">服务商</label><input class="form-input" id="rechargeProvider" readonly></div>
+                    <div class="form-item"><label class="form-label">账号名称</label><input class="form-input" id="rechargeAccount" readonly></div>
+                    <div class="form-item"><label class="form-label">当前余额</label><input class="form-input" id="rechargeBalance" readonly></div>
+                    <div class="form-item"><label class="form-label">充值金额</label><input class="form-input" id="rechargeAmount" type="number" step="0.01"></div>
+                    <div class="form-item" style="display:none;"><label class="form-label">充值时间</label><input class="form-input" id="rechargeTime" type="datetime-local"></div>
+                    <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="rechargeRemark"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('rechargeModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveRecharge()">保存充值</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rechargeRecordsModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">充值记录</div>
+                <div class="modal-close" onclick="closeModal('rechargeRecordsModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="data-table-wrapper"><table class="data-table" id="rechargeRecordsTable"></table></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('rechargeRecordsModal')">关闭</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="accountConsumeModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <div class="modal-title">账号消费明细</div>
+                <div class="modal-close" onclick="closeModal('accountConsumeModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="data-table-wrapper"><table class="data-table" id="accountConsumeTable"></table></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('accountConsumeModal')">关闭</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deadNodeModal">
+        <div class="modal medium">
+            <div class="modal-header">
+                <div class="modal-title">标记节点挂掉</div>
+                <div class="modal-close" onclick="closeModal('deadNodeModal')">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="notice" style="margin:0 0 16px 0;">节点挂掉后将标记为不可恢复，该节点不再计入剩余可用节点，已产生费用不退回。确认标记该节点为挂掉吗？</div>
+                <div class="form-grid">
+                    <div class="form-item"><label class="form-label">节点 IP</label><input class="form-input" id="deadNodeIp" readonly></div>
+                    <div class="form-item"><label class="form-label">服务商账号</label><input class="form-input" id="deadNodeAccount" readonly></div>
+                    <div class="form-item"><label class="form-label">挂掉时间</label><input class="form-input" id="deadNodeTime" type="datetime-local"></div>
+                    <div class="form-item"><label class="form-label">挂掉原因</label><select class="form-select" id="deadNodeReason"><option>节点失效</option><option>服务商回收</option><option>无法连接</option><option>其他</option></select></div>
+                    <div class="form-item" style="grid-column:span 2;"><label class="form-label">备注</label><textarea class="form-textarea" id="deadNodeRemark"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('deadNodeModal')">取消</button>
+                <button class="btn btn-primary" onclick="confirmMarkNodeDead()">确认标记</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const providerColors = { AWS: '#1890ff', '阿里云': '#13c2c2', '腾讯云': '#52c41a', linode: '#fa8c16', vultr: '#722ed1' };
+        const countryColors = { '日本': '#1890ff', '新加坡': '#13c2c2', '香港': '#52c41a', '韩国': '#fa8c16', '美国': '#722ed1' };
+        const monthDaysMap = { '2026-04': 30, '2026-05': 31 };
+
+        let currentRole = 'ops';
+        let nodeTab = 'nodes';
+        let editingAccountId = '';
+        let pendingDeadNodeId = '';
+
+        const serviceProviders = ['AWS', '阿里云', '腾讯云', 'linode', 'vultr'];
+
+        const accounts = [
+            { id: 'aws-001', provider: 'AWS', name: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', region: 'ap-northeast-1', currency: 'USD', baseFee: 40, feeCycle: '每月', discountRate: 0.9, discountPermission: '仅财务/管理员可见', warnBalance: 300, supportApi: '是', supportBill: '是', syncFreq: '每小时', status: '启用', cumulativeRecharge: 5000, cumulativeUse: 3260, balance: 1740, remark: '' },
+            { id: 'aws-002', provider: 'AWS', name: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '新加坡', region: 'ap-southeast-1', currency: 'USD', baseFee: 20, feeCycle: '每月', discountRate: 0.95, discountPermission: '仅财务/管理员可见', warnBalance: 150, supportApi: '是', supportBill: '是', syncFreq: '每日', status: '启用', cumulativeRecharge: 2000, cumulativeUse: 1890, balance: 110, remark: '' },
+            { id: 'aliyun-001', provider: '阿里云', name: 'aliyun-hk-main', accountCode: 'aliyun-hk-account', country: '香港', region: 'cn-hongkong', currency: 'CNY', baseFee: 25, feeCycle: '每月', discountRate: 0.88, discountPermission: '仅财务/管理员可见', warnBalance: 200, supportApi: '是', supportBill: '是', syncFreq: '每小时', status: '启用', cumulativeRecharge: 3000, cumulativeUse: 1450, balance: 1550, remark: '' },
+            { id: 'tencent-001', provider: '腾讯云', name: 'tencent-sg-main', accountCode: 'tencent-sg-account', country: '新加坡', region: 'ap-singapore', currency: 'CNY', baseFee: 18, feeCycle: '每月', discountRate: 0.92, discountPermission: '仅财务/管理员可见', warnBalance: 180, supportApi: '是', supportBill: '是', syncFreq: '每日', status: '启用', cumulativeRecharge: 2500, cumulativeUse: 980, balance: 1520, remark: '' },
+            { id: 'linode-001', provider: 'linode', name: 'linode-jp-01', accountCode: 'linode-japan-account', country: '日本', region: 'jp-tyo-1', currency: 'USD', baseFee: 0, feeCycle: '每月', discountRate: 1, discountPermission: '仅财务/管理员可见', warnBalance: 100, supportApi: '否', supportBill: '否', syncFreq: '手动', status: '停用', cumulativeRecharge: 1000, cumulativeUse: 860, balance: 140, remark: '' }
+        ];
+
+        const rechargeRecords = [
+            { id: 'r1', accountId: 'aws-001', provider: 'AWS', accountName: 'aws-japan-main', amount: 1000, currency: 'USD', time: '2026-04-01 10:00:00', operator: 'admin', beforeBalance: 740, afterBalance: 1740, voucher: 'TXN-AWS-001', remark: '' },
+            { id: 'r2', accountId: 'aws-001', provider: 'AWS', accountName: 'aws-japan-main', amount: 2000, currency: 'USD', time: '2026-04-05 16:30:00', operator: 'admin', beforeBalance: -260, afterBalance: 1740, voucher: 'TXN-AWS-002', remark: '' },
+            { id: 'r3', accountId: 'aws-002', provider: 'AWS', accountName: 'aws-sg-backup', amount: 2000, currency: 'USD', time: '2026-04-02 09:00:00', operator: 'ops01', beforeBalance: 0, afterBalance: 2000, voucher: '', remark: '' },
+            { id: 'r4', accountId: 'aliyun-001', provider: '阿里云', accountName: 'aliyun-hk-main', amount: 1500, currency: 'CNY', time: '2026-04-03 11:20:00', operator: 'ops01', beforeBalance: 50, afterBalance: 1550, voucher: '', remark: '' },
+            { id: 'r5', accountId: 'aliyun-001', provider: '阿里云', accountName: 'aliyun-hk-main', amount: 1500, currency: 'CNY', time: '2026-04-08 13:10:00', operator: 'admin', beforeBalance: 50, afterBalance: 1550, voucher: '', remark: '' },
+            { id: 'r6', accountId: 'tencent-001', provider: '腾讯云', accountName: 'tencent-sg-main', amount: 1000, currency: 'CNY', time: '2026-04-06 09:10:00', operator: 'ops01', beforeBalance: 520, afterBalance: 1520, voucher: '', remark: '' },
+            { id: 'r7', accountId: 'tencent-001', provider: '腾讯云', accountName: 'tencent-sg-main', amount: 1500, currency: 'CNY', time: '2026-04-11 09:10:00', operator: 'ops01', beforeBalance: 20, afterBalance: 1520, voucher: '', remark: '' },
+            { id: 'r8', accountId: 'linode-001', provider: 'linode', accountName: 'linode-jp-01', amount: 1000, currency: 'USD', time: '2026-04-01 08:00:00', operator: 'admin', beforeBalance: 0, afterBalance: 1000, voucher: '', remark: '' }
+        ];
+
+        const accountCostLogs = [
+            { id: 'ac1', accountId: 'aws-001', time: '2026-04-01', type: '账号基础费用', amount: 40, remark: '月度账号费' },
+            { id: 'ac2', accountId: 'aws-002', time: '2026-04-01', type: '账号基础费用', amount: 20, remark: '月度账号费' },
+            { id: 'ac3', accountId: 'aliyun-001', time: '2026-04-01', type: '账号基础费用', amount: 25, remark: '月度账号费' },
+            { id: 'ac4', accountId: 'tencent-001', time: '2026-04-01', type: '账号基础费用', amount: 18, remark: '月度账号费' }
+        ];
+
+        const nodes = [
+            { id: 'n1', period: '2026-04-01', ip: '52.196.12.18', provider: 'AWS', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '2C4G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-03-22 09:00:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.12, serverDurationHours: 24, serverCost: 2.88, systemFee: 0.2, bandwidthFee: 0.3, trafficBilling: '已包含在服务器费用中', packageTraffic: 0, actualTraffic: 210.5, billableTraffic: 0, trafficUnitPrice: 0, trafficCost: 0, configStatus: '已配置', sync: '2026-04-07 10:12:20' },
+            { id: 'n2', period: '2026-04-02', ip: '3.112.88.21', provider: 'AWS', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '4C8G', systemModel: 'Debian 12', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-04-02 12:20:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.18, serverDurationHours: 24, serverCost: 4.32, systemFee: 0.15, bandwidthFee: 0.45, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 380.4, billableTraffic: 320.4, trafficUnitPrice: 0.02, trafficCost: 6.41, configStatus: '已配置', sync: '2026-04-07 09:44:18' },
+            { id: 'n3', period: '2026-04-03', ip: '47.245.65.90', provider: '阿里云', accountId: 'aliyun-001', accountName: 'aliyun-hk-main', accountCode: 'aliyun-hk-account', country: '香港', serverRegion: 'cn-hongkong', serverSpec: '4C8G', systemModel: 'Windows Server 2022', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-03-28 08:30:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '系统费率计算', serverBilling: '按量', serverUnitPrice: 0.16, serverDurationHours: 24, serverCost: 3.84, systemFee: 0.8, bandwidthFee: 0.5, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 455.4, billableTraffic: 455.4, trafficUnitPrice: 0.018, trafficCost: 8.2, configStatus: '已配置', sync: '2026-04-07 08:20:11' },
+            { id: 'n4', period: '2026-04-04', ip: '43.129.72.30', provider: '腾讯云', accountId: 'tencent-001', accountName: 'tencent-sg-main', accountCode: 'tencent-sg-account', country: '新加坡', serverRegion: 'ap-singapore', serverSpec: '2C2G', systemModel: 'CentOS 9', nodeStatus: '已挂掉', lifecycle: '已挂掉', createdAt: '2026-03-02 14:00:00', deadAt: '2026-04-04 18:01:33', deadReason: '服务商回收', recoverable: '不可恢复', billSource: '系统费率计算', serverBilling: '包月', serverUnitPrice: 24, serverDurationHours: 0, serverCost: 0.8, systemFee: 0.1, bandwidthFee: 0.2, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 51.8, billableTraffic: 51.8, trafficUnitPrice: 0.02, trafficCost: 1.04, configStatus: '已配置', sync: '2026-04-06 18:01:33' },
+            { id: 'n5', period: '2026-04-05', ip: '54.193.42.16', provider: 'AWS', accountId: 'aws-002', accountName: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '美国', serverRegion: 'us-west-2', serverSpec: '8C16G', systemModel: 'Ubuntu 24.04', nodeStatus: '故障', lifecycle: '正常', createdAt: '2026-03-10 10:10:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '按量', serverUnitPrice: 0.49, serverDurationHours: 24, serverCost: 11.76, systemFee: 0.5, bandwidthFee: 0.9, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 780.7, billableTraffic: 680.7, trafficUnitPrice: 0.018, trafficCost: 12.25, configStatus: '同步失败', sync: '2026-04-07 07:52:42' },
+            { id: 'n6', period: '2026-04-06', ip: '172.104.46.72', provider: 'linode', accountId: 'linode-001', accountName: 'linode-jp-01', accountCode: 'linode-japan-account', country: '日本', serverRegion: 'jp-tyo-1', serverSpec: '2C4G', systemModel: 'Debian 12', nodeStatus: '已挂掉', lifecycle: '已挂掉', createdAt: '2026-02-18 07:00:00', deadAt: '2026-03-29 12:00:00', deadReason: '节点失效', recoverable: '不可恢复', billSource: '未配置', serverBilling: '包月', serverUnitPrice: 20, serverDurationHours: 0, serverCost: 0, systemFee: 0, bandwidthFee: 0, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 91.5, billableTraffic: 0, trafficUnitPrice: 0, trafficCost: 0, configStatus: '未配置', sync: '-' },
+            { id: 'n7', period: '2026-04-07', ip: '149.28.188.42', provider: 'vultr', accountId: 'aws-001', accountName: 'aws-japan-main', accountCode: 'aws-main-account', country: '香港', serverRegion: 'hongkong-2', serverSpec: '2C4G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-04-07 06:18:09', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '服务商账单接口', serverBilling: '包月', serverUnitPrice: 32, serverDurationHours: 0, serverCost: 1.07, systemFee: 0.12, bandwidthFee: 0.3, trafficBilling: '包月', packageTraffic: 500, actualTraffic: 612.1, billableTraffic: 112.1, trafficUnitPrice: 0.02, trafficCost: 0.4, configStatus: '已配置', sync: '2026-04-07 06:18:09' },
+            { id: 'n8', period: '2026-04-07', ip: '18.183.77.55', provider: 'AWS', accountId: 'aws-002', accountName: 'aws-sg-backup', accountCode: 'aws-singapore-account', country: '日本', serverRegion: 'ap-northeast-1', serverSpec: '8C16G', systemModel: 'Ubuntu 22.04', nodeStatus: '开启', lifecycle: '正常', createdAt: '2026-02-15 08:00:00', deadAt: '', deadReason: '', recoverable: '可恢复', billSource: '系统费率计算', serverBilling: '按量', serverUnitPrice: 0.42, serverDurationHours: 24, serverCost: 10.08, systemFee: 0.3, bandwidthFee: 0.4, trafficBilling: '按量', packageTraffic: 0, actualTraffic: 640.35, billableTraffic: 440.35, trafficUnitPrice: 0.012, trafficCost: 5.28, configStatus: '已配置', sync: '2026-04-06 22:17:51' }
+        ];
+
+        const importPreviewRows = [
+            { row: 2, ip: '3.1.8.2', provider: 'AWS', account: 'aws-japan-main', region: 'Tokyo-1', baseFee: 40, discountRate: 0.9, country: '日本', spec: '2C4G', system: 'Ubuntu 22.04', status: '通过', reason: '-', action: '已导入' },
+            { row: 3, ip: '13.2.6.9', provider: '阿里云', account: 'aliyun-hk-main', region: '香港', baseFee: 25, discountRate: 0.88, country: '香港', spec: '4C8G', system: 'Windows Server 2022', status: '异常', reason: '系统型号不存在，可新增系统字典', action: '未处理' },
+            { row: 4, ip: '45.76.12.18', provider: 'vultr', account: 'aws-japan-main', region: 'HongKong-2', baseFee: 40, discountRate: 0.9, country: '日本', spec: '2C4G', system: 'Debian 12', status: '异常', reason: '节点 IP 已存在，需先在系统内处理', action: '未处理' }
+        ];
+
+        const resourceDict = {
+            region: [
+                { provider: 'AWS', country: '日本', code: 'ap-northeast-1', name: 'Tokyo-1', source: '接口同步', status: '启用' },
+                { provider: '阿里云', country: '香港', code: 'cn-hongkong', name: '香港', source: '接口同步', status: '启用' },
+                { provider: '腾讯云', country: '新加坡', code: 'ap-singapore', name: '新加坡', source: '接口同步', status: '启用' },
+                { provider: 'linode', country: '日本', code: 'jp-tyo-1', name: '东京', source: '手动新增', status: '启用' }
+            ],
+            spec: [
+                { provider: 'AWS', code: 't3.large', display: '2C4G', cpu: '2核', memory: '4GB', disk: '80G', bandwidth: '20Mbps', source: '接口同步', status: '启用' },
+                { provider: 'AWS', code: 'm6i.2xlarge', display: '8C16G', cpu: '8核', memory: '16GB', disk: '200G', bandwidth: '100Mbps', source: '接口同步', status: '启用' },
+                { provider: '阿里云', code: 'ecs.g7.xlarge', display: '4C8G', cpu: '4核', memory: '8GB', disk: '120G', bandwidth: '50Mbps', source: '接口同步', status: '启用' }
+            ],
+            system: [
+                { provider: 'AWS', type: 'Linux', model: 'Ubuntu 22.04', imageId: 'ami-ubuntu2204', extraCharge: '否', systemFee: '$0', source: '接口同步', status: '启用' },
+                { provider: '阿里云', type: 'Windows', model: 'Windows Server 2022', imageId: 'win-2022', extraCharge: '是', systemFee: '$8', source: '接口同步', status: '启用' },
+                { provider: 'linode', type: 'Linux', model: 'Debian 12', imageId: '-', extraCharge: '否', systemFee: '$0', source: '手动新增', status: '启用' }
+            ]
+        };
+
+        const dailyTrendData = [
+            { date: '2026-04-01', total: 1150, accountCost: 103, server: 640, traffic: 267, recharge: 1000 },
+            { date: '2026-04-02', total: 980, accountCost: 0, server: 610, traffic: 370, recharge: 2000 },
+            { date: '2026-04-03', total: 1040, accountCost: 25, server: 620, traffic: 395, recharge: 1500 },
+            { date: '2026-04-04', total: 920, accountCost: 18, server: 590, traffic: 312, recharge: 0 },
+            { date: '2026-04-05', total: 1310, accountCost: 0, server: 760, traffic: 550, recharge: 2000 },
+            { date: '2026-04-06', total: 860, accountCost: 0, server: 520, traffic: 340, recharge: 1000 },
+            { date: '2026-04-07', total: 970, accountCost: 0, server: 560, traffic: 410, recharge: 0 }
+        ];
+        const monthlyTrendData = [
+            { month: '2026-01', total: 8800, accountCost: 320, server: 5220, traffic: 3260, recharge: 4200 },
+            { month: '2026-02', total: 9620, accountCost: 320, server: 5660, traffic: 3640, recharge: 3600 },
+            { month: '2026-03', total: 10340, accountCost: 348, server: 6140, traffic: 3852, recharge: 4800 },
+            { month: '2026-04', total: 11080, accountCost: 326, server: 6535, traffic: 4219, recharge: 6500 }
+        ];
+
+        function money(value) {
+            return '$' + Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function isFinanceRole() {
+            return currentRole === 'finance';
+        }
+        function statusTag(text) {
+            const cls = text === '启用' || text === '开启' || text === '正常' || text === '已配置' ? 'green' : text === '停用' || text === '关闭' || text === '余额不足' ? 'orange' : 'red';
+            return `<span class="tag ${cls}">${text}</span>`;
+        }
+        function parseDate(dateStr) {
+            return new Date(dateStr.replace(' ', 'T'));
+        }
+        function fmtDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        function fmtDateTime(dateObj) {
+            return `${fmtDate(dateObj)} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}:${String(dateObj.getSeconds()).padStart(2, '0')}`;
+        }
+        function toDateInput(dateObj) {
+            return `${fmtDate(dateObj)}T${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        }
+        function listDates(start, end) {
+            const list = [];
+            let cur = new Date(start + 'T00:00:00');
+            const endDate = new Date(end + 'T00:00:00');
+            while (cur <= endDate) {
+                list.push(fmtDate(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+            return list;
+        }
+        function listMonths(start, end) {
+            const list = [];
+            let [y, m] = start.split('-').map(Number);
+            const [ey, em] = end.split('-').map(Number);
+            while (y < ey || (y === ey && m <= em)) {
+                list.push(`${y}-${String(m).padStart(2, '0')}`);
+                m += 1;
+                if (m > 12) { m = 1; y += 1; }
+            }
+            return list;
+        }
+        function getRange() {
+            const dim = document.getElementById('dimension').value;
+            return dim === 'day'
+                ? { dim, start: document.getElementById('startDate').value, end: document.getElementById('endDate').value }
+                : { dim, start: document.getElementById('startMonth').value, end: document.getElementById('endMonth').value };
+        }
+        function inRange(dateText) {
+            if (!dateText) return false;
+            const range = getRange();
+            if (range.dim === 'day') {
+                const day = dateText.slice(0, 10);
+                return day >= range.start && day <= range.end;
+            }
+            const month = dateText.slice(0, 7);
+            return month >= range.start && month <= range.end;
+        }
+        function getAccountById(id) {
+            return accounts.find(item => item.id === id);
+        }
+        function getAccountStatus(account) {
+            if (account.status === '停用') return '停用';
+            if (account.balance <= account.warnBalance) return '余额不足';
+            return '启用';
+        }
+        function getNodeCost(node) {
+            if (node.configStatus === '未配置' || node.billSource === '未配置') {
+                return { total: null, discounted: null, discountAmount: null };
+            }
+            const total = node.serverCost + node.systemFee + node.bandwidthFee + node.trafficCost;
+            const account = getAccountById(node.accountId);
+            const rate = account ? account.discountRate : 1;
+            return { total, discounted: total * rate, discountAmount: total * (1 - rate) };
+        }
+        function getAccountPeriodCost(account) {
+            return accountCostLogs.filter(log => log.accountId === account.id && inRange(log.time)).reduce((sum, log) => sum + log.amount, 0);
+        }
+        function getAccountRecharge(account, withinRangeOnly) {
+            return rechargeRecords
+                .filter(record => record.accountId === account.id && (!withinRangeOnly || inRange(record.time)))
+                .reduce((sum, record) => sum + record.amount, 0);
+        }
+        function nodeMatchesFilter(node, ignoreTime) {
+            const account = getAccountById(node.accountId) || { country: '', status: '', balance: 0, warnBalance: 0 };
+            const provider = document.getElementById('providerFilter').value;
+            const country = document.getElementById('countryFilter').value;
+            const ip = document.getElementById('ipFilter').value.trim();
+            const serverBilling = document.getElementById('serverBillingFilter').value;
+            const trafficBilling = document.getElementById('trafficBillingFilter').value;
+            const billSource = document.getElementById('billSourceFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const config = document.getElementById('configFilter').value;
+            const accountId = document.getElementById('accountFilter').value;
+            const accountStatus = document.getElementById('accountStatusFilter').value;
+            const lifecycle = document.getElementById('lifecycleFilter').value;
+            const newNode = document.getElementById('newNodeFilter').value;
+            const deadNode = document.getElementById('deadNodeFilter').value;
+            if (!ignoreTime && !inRange(node.period)) return false;
+            if (provider && node.provider !== provider) return false;
+            if (country && node.country !== country) return false;
+            if (ip && !node.ip.includes(ip)) return false;
+            if (serverBilling && node.serverBilling !== serverBilling) return false;
+            if (trafficBilling && node.trafficBilling !== trafficBilling) return false;
+            if (billSource && node.billSource !== billSource) return false;
+            if (status && node.nodeStatus !== status && !(status === '故障' && node.nodeStatus === '已挂掉')) return false;
+            if (config && node.configStatus !== config) return false;
+            if (accountId && node.accountId !== accountId) return false;
+            if (accountStatus && getAccountStatus(account) !== accountStatus) return false;
+            if (lifecycle && node.lifecycle !== lifecycle) return false;
+            if (newNode === '本期新增' && !inRange(node.createdAt)) return false;
+            if (newNode === '非本期新增' && inRange(node.createdAt)) return false;
+            if (deadNode === '本期挂掉' && !inRange(node.deadAt)) return false;
+            if (deadNode === '历史挂掉' && (!node.deadAt || inRange(node.deadAt))) return false;
+            if (deadNode === '未挂掉' && node.deadAt) return false;
+            return true;
+        }
+        function accountMatchesFilter(account) {
+            const provider = document.getElementById('providerFilter').value;
+            const country = document.getElementById('countryFilter').value;
+            const accountId = document.getElementById('accountFilter').value;
+            const accountStatus = document.getElementById('accountStatusFilter').value;
+            if (provider && account.provider !== provider) return false;
+            if (country && account.country !== country) return false;
+            if (accountId && account.id !== accountId) return false;
+            if (accountStatus && getAccountStatus(account) !== accountStatus) return false;
+            return true;
+        }
+        function getFilteredNodes(ignoreTime) {
+            return nodes.filter(node => nodeMatchesFilter(node, ignoreTime));
+        }
+        function getFilteredAccounts() {
+            return accounts.filter(account => accountMatchesFilter(account));
+        }
+        function buildTrendSeries() {
+            const range = getRange();
+            const source = range.dim === 'day' ? dailyTrendData : monthlyTrendData;
+            const keys = range.dim === 'day' ? listDates(range.start, range.end) : listMonths(range.start, range.end);
+            const map = {};
+            source.forEach(item => { map[item.date || item.month] = item; });
+            return {
+                rows: keys.map(key => {
+                    const row = map[key] || { total: 0, accountCost: 0, server: 0, traffic: 0, recharge: 0 };
+                    return {
+                        label: range.dim === 'day' ? key.slice(5) : key,
+                        total: row.total,
+                        accountCost: row.accountCost,
+                        server: row.server,
+                        traffic: row.traffic,
+                        recharge: row.recharge
+                    };
+                }),
+                hint: range.dim === 'day' ? `${range.start} 至 ${range.end} 日成本` : `${range.start} 至 ${range.end} 月成本`
+            };
+        }
+        function renderOverview() {
+            const periodNodes = getFilteredNodes(false);
+            const snapshotNodes = getFilteredNodes(true);
+            const accountsInScope = getFilteredAccounts();
+            const periodAccountCost = accountsInScope.reduce((sum, account) => sum + getAccountPeriodCost(account), 0);
+            const periodRecharge = accountsInScope.reduce((sum, account) => sum + getAccountRecharge(account, true), 0);
+            const periodServerCost = periodNodes.reduce((sum, node) => sum + (getNodeCost(node).total ? node.serverCost + node.systemFee + node.bandwidthFee : 0), 0);
+            const periodTrafficCost = periodNodes.reduce((sum, node) => sum + (getNodeCost(node).total ? node.trafficCost : 0), 0);
+            const periodNodeTotal = periodNodes.reduce((sum, node) => sum + (getNodeCost(node).total || 0), 0);
+            const periodTotal = periodAccountCost + periodNodeTotal;
+            const periodNewNodes = snapshotNodes.filter(node => inRange(node.createdAt)).length;
+            const periodDeadNodes = snapshotNodes.filter(node => inRange(node.deadAt)).length;
+            const balance = accountsInScope.reduce((sum, account) => sum + account.balance, 0);
+            const currentAccounts = accountsInScope.length;
+            const enabledAccounts = accountsInScope.filter(account => getAccountStatus(account) === '启用').length;
+            const currentNodes = snapshotNodes.filter(node => node.lifecycle !== '已删除').length;
+            const currentAvailableNodes = snapshotNodes.filter(node => node.lifecycle === '正常' && node.nodeStatus !== '已挂掉').length;
+            const totalDeadNodes = snapshotNodes.filter(node => node.lifecycle === '已挂掉').length;
+
+            const periodCards = [
+                ['筛选期总消耗', money(periodTotal), '账号成本 + 节点消耗', ''],
+                ['筛选期充值金额', money(periodRecharge), '当前时间范围内充值金额', 'green'],
+                ['筛选期使用金额', money(periodTotal), '当前时间范围内实际消耗', 'orange'],
+                ['筛选期账号成本', money(periodAccountCost), '账号基础费用及账号层费用', 'cyan'],
+                ['筛选期服务器成本', money(periodServerCost), '服务器 + 系统 + 带宽费用', 'purple'],
+                ['筛选期流量成本', money(periodTrafficCost), '节点流量费用合计', 'orange'],
+                ['筛选期新增节点数', String(periodNewNodes), '当前时间范围内新增节点', 'green'],
+                ['筛选期挂掉节点数', String(periodDeadNodes), '当前时间范围内挂掉节点', 'red warning']
+            ];
+            const snapshotCards = [
+                ['当前余额', money(balance), '累计充值金额 - 累计使用金额', ''],
+                ['当前账号数', String(currentAccounts), '当前筛选范围内服务商账号数量', 'green'],
+                ['启用账号数', String(enabledAccounts), '当前启用中的账号数量', 'cyan'],
+                ['当前节点数', String(currentNodes), '当前筛选范围内的节点总数', 'purple'],
+                ['当前可用节点数', String(currentAvailableNodes), '未挂掉且可使用的节点数量', 'green'],
+                ['累计挂掉节点数', String(totalDeadNodes), '历史累计挂掉且不可恢复', 'red warning']
+            ];
+            const renderCards = cards => cards.map(([title, value, desc, cls]) => `<div class="stat-card ${cls.replace(' warning', '')}"><div class="stat-title">${title}</div><div class="stat-value ${cls.includes('warning') ? 'warning' : ''}">${value}</div><div class="stat-desc">${desc}</div></div>`).join('');
+            document.getElementById('periodOverviewCards').innerHTML = renderCards(periodCards);
+            document.getElementById('snapshotOverviewCards').innerHTML = renderCards(snapshotCards);
+        }
+        function renderCharts() {
+            const trend = buildTrendSeries();
+            document.getElementById('trendHint').innerText = trend.hint;
+            document.getElementById('trendLegend').innerHTML = `
+                <span><i class="legend-dot" style="background:#1890ff;"></i>总消耗</span>
+                <span><i class="legend-dot" style="background:#13c2c2;"></i>账号成本</span>
+                <span><i class="legend-dot" style="background:#52c41a;"></i>服务器成本</span>
+                <span><i class="legend-dot" style="background:#fa8c16;"></i>流量成本</span>
+                <span><i class="legend-dot" style="background:#722ed1;"></i>充值金额</span>
+            `;
+            const max = Math.max(...trend.rows.map(row => Math.max(row.total, row.recharge)), 1);
+            document.getElementById('trendChart').innerHTML = trend.rows.map(row => `
+                <div class="trend-column">
+                    <div class="trend-bar" style="background:#1890ff;height:${row.total / max * 100}%"></div>
+                    <div class="trend-bar" style="background:#13c2c2;height:${row.accountCost / max * 100}%"></div>
+                    <div class="trend-bar" style="background:#52c41a;height:${row.server / max * 100}%"></div>
+                    <div class="trend-bar" style="background:#fa8c16;height:${row.traffic / max * 100}%"></div>
+                    <div class="trend-bar" style="background:#722ed1;height:${row.recharge / max * 100}%"></div>
+                    <div class="trend-label">${row.label}</div>
+                </div>
+            `).join('');
+            renderDistribution('providerChart', aggregateNodeDistribution('provider'), providerColors);
+            renderDistribution('countryChart', aggregateNodeDistribution('country'), countryColors);
+        }
+        function aggregateNodeDistribution(key) {
+            const map = {};
+            getFilteredNodes(false).forEach(node => {
+                const cost = getNodeCost(node);
+                if (cost.total === null) return;
+                map[node[key]] = (map[node[key]] || 0) + cost.total;
+            });
+            return map;
+        }
+        function renderDistribution(id, data, colors) {
+            const entries = Object.entries(data);
+            const total = entries.reduce((sum, [, value]) => sum + value, 0) || 1;
+            document.getElementById(id).innerHTML = entries.map(([name, value]) => `<div class="dist-row"><div class="dist-name">${name}</div><div class="dist-track"><div class="dist-fill" style="width:${value / total * 100}%;background:${colors[name] || '#1890ff'}"></div></div><div class="dist-value">${(value / total * 100).toFixed(1)}%</div></div>`).join('');
+        }
+        function renderAccountCostTable() {
+            const rows = getFilteredAccounts();
+            const headers = ['服务商', '账号名称', '账号 ID', '账号状态', '币种', '关联节点数', '当前节点数', '当前可用节点数', '筛选期新增节点数', '筛选期挂掉节点数', '累计挂掉节点数', '账号基础费用'];
+            if (isFinanceRole()) headers.push('账号折扣');
+            headers.push('累计充值金额', '筛选期充值金额', '累计使用金额', '筛选期使用金额', '当前余额', '余额预警值', '最近充值时间', '最近消费时间', '操作');
+            document.getElementById('accountCostTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(account => {
+                const relatedNodes = nodes.filter(node => node.accountId === account.id);
+                const periodNodes = relatedNodes.filter(node => inRange(node.period));
+                const currentNodes = relatedNodes.filter(node => node.lifecycle !== '已删除').length;
+                const availableNodes = relatedNodes.filter(node => node.lifecycle === '正常').length;
+                const periodNew = relatedNodes.filter(node => inRange(node.createdAt)).length;
+                const periodDead = relatedNodes.filter(node => inRange(node.deadAt)).length;
+                const totalDead = relatedNodes.filter(node => node.lifecycle === '已挂掉').length;
+                const periodUse = getAccountPeriodCost(account) + periodNodes.reduce((sum, node) => sum + (getNodeCost(node).discounted || 0), 0);
+                const periodRecharge = getAccountRecharge(account, true);
+                const latestRecharge = rechargeRecords.filter(record => record.accountId === account.id).slice().sort((a, b) => b.time.localeCompare(a.time))[0];
+                const latestConsume = relatedNodes.slice().sort((a, b) => b.period.localeCompare(a.period))[0];
+                return `<tr>
+                    <td>${account.provider}</td><td>${account.name}</td><td>${account.accountCode}</td><td>${statusTag(getAccountStatus(account))}</td><td>${account.currency}</td>
+                    <td>${relatedNodes.length}</td><td>${currentNodes}</td><td>${availableNodes}</td><td>${periodNew}</td><td>${periodDead}</td><td>${totalDead}</td><td>${money(account.baseFee)}</td>
+                    ${isFinanceRole() ? `<td>${Math.round(account.discountRate * 100)}%</td>` : ''}
+                    <td>${money(account.cumulativeRecharge)}</td><td>${money(periodRecharge)}</td><td>${money(account.cumulativeUse)}</td><td>${money(periodUse)}</td><td>${money(account.balance)}</td><td>${money(account.warnBalance)}</td><td>${latestRecharge ? latestRecharge.time : '-'}</td><td>${latestConsume ? latestConsume.period : '-'}</td>
+                    <td><a class="action-link" onclick="openRechargeModal('${account.id}')">充值</a><a class="action-link" onclick="openRechargeRecordsModal('${account.id}')">充值记录</a><a class="action-link" onclick="openAccountConsumeModal('${account.id}')">消费明细</a><a class="action-link" onclick="openAccountModal('${account.id}')">编辑账号</a><a class="action-link" onclick="viewAccountNodes('${account.id}')">查看节点</a></td>
+                </tr>`;
+            }).join('')}</tbody>`;
+        }
+        function switchTab(tab, el) {
+            nodeTab = tab;
+            el.parentElement.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+            el.classList.add('active');
+            renderNodeSection();
+        }
+        function renderNodeSection() {
+            if (nodeTab === 'providers') renderNodeProviderTable();
+            else if (nodeTab === 'countries') renderNodeCountryTable();
+            else renderNodeTable();
+        }
+        function renderNodeTable() {
+            const rows = getFilteredNodes(false);
+            const periodTitle = getRange().dim === 'day' ? '统计日期' : '统计月份';
+            const headers = [periodTitle, '节点 IP', '服务商账号', '账号 ID', '服务商', '国家/地区', '服务器地区', '服务器配置', '系统型号', '节点状态', '节点生命周期', '新增时间', '挂掉时间', '挂掉原因', '是否可恢复', '账单来源', '服务器计费方式', '服务器单价', '服务器成本', '系统版本费用', '带宽费用', '流量计费方式', '实际流量', '计费流量', '流量成本', '节点消耗'];
+            if (isFinanceRole()) headers.push('账号折扣', '折扣金额', '折后节点消耗');
+            headers.push('成本配置状态', '最后同步时间', '操作');
+            document.getElementById('dataTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map((node, index) => {
+                const account = getAccountById(node.accountId);
+                const cost = getNodeCost(node);
+                return `<tr>
+                    <td>${getRange().dim === 'day' ? node.period : node.period.slice(0, 7)}</td><td>${node.ip}</td><td>${node.accountName}</td><td>${node.accountCode}</td><td>${node.provider}</td><td>${node.country}</td><td>${node.serverRegion}</td><td>${node.serverSpec}</td><td>${node.systemModel}</td><td>${statusTag(node.nodeStatus)}</td><td>${node.lifecycle}</td><td>${node.createdAt}</td><td>${node.deadAt || '-'}</td><td>${node.deadReason || '-'}</td><td>${node.recoverable}</td><td>${node.billSource}</td><td>${node.serverBilling}</td><td>${money(node.serverUnitPrice)}${node.serverBilling === '包月' ? '/月' : '/小时'}</td><td>${cost.total === null ? '-' : money(node.serverCost)}</td><td>${cost.total === null ? '-' : money(node.systemFee)}</td><td>${cost.total === null ? '-' : money(node.bandwidthFee)}</td><td>${node.trafficBilling}</td><td>${node.actualTraffic.toFixed(2)}GB</td><td>${node.billableTraffic.toFixed(2)}GB</td><td>${cost.total === null ? '-' : money(node.trafficCost)}</td><td>${cost.total === null ? '-' : money(cost.total)}</td>
+                    ${isFinanceRole() ? `<td>${account ? Math.round(account.discountRate * 100) : 100}%</td><td>${cost.discountAmount === null ? '-' : money(cost.discountAmount)}</td><td>${cost.discounted === null ? '-' : money(cost.discounted)}</td>` : ''}
+                    <td>${statusTag(node.configStatus)}</td><td>${node.sync}</td><td><a class="action-link" onclick="openDetailModal('${node.id}')">账单明细</a><a class="action-link" onclick="syncNode('${node.id}')">同步账单</a><a class="action-link" onclick="openCostModal('${node.id}')">编辑节点配置</a><a class="action-link" onclick="openDeadNodeModal('${node.id}')">标记挂掉</a></td>
+                </tr>`;
+            }).join('')}</tbody>`;
+            document.getElementById('tableSummary').innerText = `共 ${rows.length} 条节点消耗汇总`;
+            document.getElementById('permissionHint').innerText = isFinanceRole() ? '当前账号：财务/管理员，可查看账号折扣、折扣金额和折后节点消耗。' : '当前账号无折扣查看权限，仅展示节点原始消耗。';
+        }
+        function renderNodeProviderTable() {
+            const map = {};
+            getFilteredNodes(false).forEach(node => {
+                const cost = getNodeCost(node);
+                if (!map[node.provider]) map[node.provider] = { name: node.provider, nodes: 0, server: 0, traffic: 0, total: 0, discounted: 0 };
+                map[node.provider].nodes += 1;
+                map[node.provider].server += node.serverCost + node.systemFee + node.bandwidthFee;
+                map[node.provider].traffic += node.trafficCost;
+                map[node.provider].total += cost.total || 0;
+                map[node.provider].discounted += cost.discounted || 0;
+            });
+            const rows = Object.values(map);
+            const headers = ['服务商', '节点数', '服务器消耗', '流量消耗', '总消耗'];
+            if (isFinanceRole()) headers.push('折后总消耗');
+            document.getElementById('dataTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr><td>${row.name}</td><td>${row.nodes}</td><td>${money(row.server)}</td><td>${money(row.traffic)}</td><td>${money(row.total)}</td>${isFinanceRole() ? `<td>${money(row.discounted)}</td>` : ''}</tr>`).join('')}</tbody>`;
+            document.getElementById('tableSummary').innerText = `共 ${rows.length} 条服务商消耗汇总`;
+        }
+        function renderNodeCountryTable() {
+            const map = {};
+            getFilteredNodes(false).forEach(node => {
+                const cost = getNodeCost(node);
+                if (!map[node.country]) map[node.country] = { name: node.country, nodes: 0, server: 0, traffic: 0, total: 0, discounted: 0 };
+                map[node.country].nodes += 1;
+                map[node.country].server += node.serverCost + node.systemFee + node.bandwidthFee;
+                map[node.country].traffic += node.trafficCost;
+                map[node.country].total += cost.total || 0;
+                map[node.country].discounted += cost.discounted || 0;
+            });
+            const rows = Object.values(map);
+            const headers = ['国家/地区', '节点数', '服务器消耗', '流量消耗', '总消耗'];
+            if (isFinanceRole()) headers.push('折后总消耗');
+            document.getElementById('dataTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr><td>${row.name}</td><td>${row.nodes}</td><td>${money(row.server)}</td><td>${money(row.traffic)}</td><td>${money(row.total)}</td>${isFinanceRole() ? `<td>${money(row.discounted)}</td>` : ''}</tr>`).join('')}</tbody>`;
+            document.getElementById('tableSummary').innerText = `共 ${rows.length} 条国家/地区消耗汇总`;
+        }
+        function populateAccountFilterOptions() {
+            const options = ['<option value="">全部</option>'].concat(accounts.map(account => `<option value="${account.id}">${account.name}</option>`));
+            document.getElementById('accountFilter').innerHTML = options.join('');
+        }
+        function populateNodeConfigSelects() {
+            document.getElementById('nodeProvider').innerHTML = serviceProviders.map(item => `<option>${item}</option>`).join('');
+            handleProviderChange();
+        }
+        function handleProviderChange() {
+            const provider = document.getElementById('nodeProvider').value;
+            document.getElementById('nodeCloudAccount').innerHTML = accounts.filter(account => account.provider === provider).map(account => `<option value="${account.id}">${account.name}</option>`).join('');
+            document.getElementById('nodeRegion').innerHTML = resourceDict.region.filter(item => item.provider === provider).map(item => `<option>${item.name}</option>`).join('');
+            document.getElementById('nodeSpec').innerHTML = resourceDict.spec.filter(item => item.provider === provider).map(item => `<option>${item.display}</option>`).join('');
+            document.getElementById('nodeSystemModel').innerHTML = resourceDict.system.filter(item => item.provider === provider).map(item => `<option>${item.model}</option>`).join('');
+            handleAccountChange();
+        }
+        function handleAccountChange() {
+            const accountId = document.getElementById('nodeCloudAccount').value;
+            const account = getAccountById(accountId);
+            if (!account) return;
+            document.getElementById('cfgApiKey').value = account.accountCode || '';
+            document.getElementById('cfgSecret').value = '****';
+        }
+        function togglePriceSourceMode() {
+            const fromApi = document.getElementById('cfgPriceSource').value.includes('接口');
+            ['cfgApiKeyWrap', 'cfgSecretWrap'].forEach(id => { document.getElementById(id).style.display = fromApi ? 'flex' : 'none'; });
+            ['cfgServerBillingWrap', 'cfgServerMonthlyWrap', 'cfgServerHourlyWrap', 'cfgTrafficBillingWrap', 'cfgPackageTrafficWrap', 'cfgTrafficMonthlyWrap', 'cfgTrafficUnitWrap', 'cfgFreeTrafficWrap', 'cfgOverageUnitWrap'].forEach(id => {
+                document.getElementById(id).style.display = fromApi ? 'none' : document.getElementById(id).style.display;
+            });
+            document.getElementById('feeStructureNotice').innerText = fromApi ? '当前选择：对接服务商接口获取价格数据。系统将按接口账单明细同步。' : '当前选择：手动价格配置。请填写节点的服务器与流量计费参数。';
+        }
+        function renderNodeConfigPreview() {
+            togglePriceSourceMode();
+            const serverMonthly = Number(document.getElementById('cfgServerMonthly').value || 0);
+            const trafficMonthly = Number(document.getElementById('cfgTrafficMonthly').value || 0);
+            document.getElementById('nodeConfigPreview').innerHTML = `<div><div class="info-label">服务器成本预估</div><div class="info-value">${money(serverMonthly)}</div></div><div><div class="info-label">流量成本预估</div><div class="info-value">${money(trafficMonthly)}</div></div>`;
+            document.getElementById('nodeConfigPreviewDetail').innerHTML = `服务器包月价：${money(serverMonthly)}<br>流量包月价：${money(trafficMonthly)}`;
+        }
+        function switchSettingTab(tab) {
+            document.getElementById('basicSettingPanel').style.display = tab === 'basic' ? 'block' : 'none';
+            document.getElementById('costSettingPanel').style.display = tab === 'cost' ? 'block' : 'none';
+            document.getElementById('settingBasicTab').classList.toggle('active', tab === 'basic');
+            document.getElementById('settingCostTab').classList.toggle('active', tab === 'cost');
+        }
+        function openCostModal(nodeId) {
+            switchSettingTab('basic');
+            populateNodeConfigSelects();
+            if (nodeId) {
+                const node = nodes.find(item => item.id === nodeId);
+                if (node) {
+                    document.getElementById('nodeIp').value = node.ip;
+                    document.getElementById('nodeProvider').value = node.provider;
+                    handleProviderChange();
+                    document.getElementById('nodeCloudAccount').value = node.accountId;
+                    document.getElementById('nodeCountry').value = node.country;
+                    document.getElementById('nodeRegion').value = node.serverRegion;
+                    document.getElementById('nodeSpec').value = node.serverSpec;
+                    document.getElementById('nodeSystemModel').value = node.systemModel;
+                }
+            } else {
+                document.getElementById('nodeIp').value = '';
+                document.getElementById('nodeRemark').value = '';
+            }
+            document.getElementById('costModal').style.display = 'flex';
+        }
+        function saveCostConfig() {
+            closeModal('costModal');
+            renderAll();
+            showToast('节点配置已保存');
+        }
+        function openAccountModal(accountId) {
+            editingAccountId = accountId || '';
+            document.getElementById('acctProvider').innerHTML = serviceProviders.map(item => `<option>${item}</option>`).join('');
+            if (accountId) {
+                const account = getAccountById(accountId);
+                document.getElementById('accountModalTitle').innerText = '编辑账号';
+                document.getElementById('acctProvider').value = account.provider;
+                document.getElementById('acctName').value = account.name;
+                document.getElementById('acctId').value = account.accountCode;
+                document.getElementById('acctKey').value = '';
+                document.getElementById('acctSecret').value = '';
+                document.getElementById('acctCurrency').value = account.currency;
+                document.getElementById('acctCountry').value = account.country;
+                document.getElementById('acctRegion').value = account.region;
+                document.getElementById('acctBaseFee').value = account.baseFee;
+                document.getElementById('acctFeeCycle').value = account.feeCycle;
+                document.getElementById('acctDiscountType').value = account.discountRate === 1 ? '无折扣' : '比例折扣';
+                document.getElementById('acctDiscount').value = Math.round(account.discountRate * 100);
+                document.getElementById('acctDiscountPermission').value = account.discountPermission;
+                document.getElementById('acctWarnBalance').value = account.warnBalance;
+                document.getElementById('acctSupportApi').value = account.supportApi;
+                document.getElementById('acctSupportBill').value = account.supportBill;
+                document.getElementById('acctSyncFreq').value = account.syncFreq;
+                document.getElementById('acctStatus').value = account.status;
+                document.getElementById('acctRemark').value = account.remark;
+            } else {
+                document.getElementById('accountModalTitle').innerText = '新增账号';
+                ['acctName', 'acctId', 'acctKey', 'acctSecret', 'acctRegion', 'acctBaseFee', 'acctDiscount', 'acctWarnBalance', 'acctRemark'].forEach(id => { document.getElementById(id).value = ''; });
+                document.getElementById('acctProvider').value = 'AWS';
+                document.getElementById('acctCurrency').value = 'USD';
+                document.getElementById('acctCountry').value = '日本';
+                document.getElementById('acctFeeCycle').value = '每月';
+                document.getElementById('acctDiscountType').value = '无折扣';
+                document.getElementById('acctDiscountPermission').value = '仅财务/管理员可见';
+                document.getElementById('acctSupportApi').value = '是';
+                document.getElementById('acctSupportBill').value = '是';
+                document.getElementById('acctSyncFreq').value = '每小时';
+                document.getElementById('acctStatus').value = '启用';
+            }
+            document.getElementById('accountModal').style.display = 'flex';
+        }
+        function saveAccount() {
+            const payload = {
+                provider: document.getElementById('acctProvider').value,
+                name: document.getElementById('acctName').value.trim(),
+                accountCode: document.getElementById('acctId').value.trim() || `acct-${Date.now()}`,
+                country: document.getElementById('acctCountry').value,
+                region: document.getElementById('acctRegion').value.trim() || '未设置',
+                currency: document.getElementById('acctCurrency').value,
+                baseFee: Number(document.getElementById('acctBaseFee').value || 0),
+                feeCycle: document.getElementById('acctFeeCycle').value,
+                discountRate: Number(document.getElementById('acctDiscount').value || 100) / 100,
+                discountPermission: document.getElementById('acctDiscountPermission').value,
+                warnBalance: Number(document.getElementById('acctWarnBalance').value || 0),
+                supportApi: document.getElementById('acctSupportApi').value,
+                supportBill: document.getElementById('acctSupportBill').value,
+                syncFreq: document.getElementById('acctSyncFreq').value,
+                status: document.getElementById('acctStatus').value,
+                remark: document.getElementById('acctRemark').value
+            };
+            if (!payload.name) {
+                showToast('请填写账号名称');
+                return;
+            }
+            if (editingAccountId) {
+                const target = getAccountById(editingAccountId);
+                Object.assign(target, payload);
+            } else {
+                accounts.unshift({ id: `acct-${Date.now()}`, cumulativeRecharge: 0, cumulativeUse: 0, balance: 0, ...payload });
+            }
+            populateAccountFilterOptions();
+            closeModal('accountModal');
+            renderAll();
+            showToast('账号已保存');
+        }
+        function openRechargeModal(accountId) {
+            const account = getAccountById(accountId);
+            document.getElementById('rechargeProvider').value = account.provider;
+            document.getElementById('rechargeAccount').value = account.name;
+            document.getElementById('rechargeBalance').value = money(account.balance);
+            document.getElementById('rechargeCurrency').value = account.currency;
+            document.getElementById('rechargeAmount').value = '';
+            document.getElementById('rechargeTime').value = toDateInput(new Date());
+            document.getElementById('rechargeVoucher').value = '';
+            document.getElementById('rechargeRemark').value = '';
+            document.getElementById('rechargeModal').dataset.accountId = accountId;
+            document.getElementById('rechargeModal').style.display = 'flex';
+        }
+        function saveRecharge() {
+            const accountId = document.getElementById('rechargeModal').dataset.accountId;
+            const account = getAccountById(accountId);
+            const amount = Number(document.getElementById('rechargeAmount').value || 0);
+            if (!amount) {
+                showToast('请填写充值金额');
+                return;
+            }
+            const beforeBalance = account.balance;
+            account.cumulativeRecharge += amount;
+            account.balance += amount;
+            rechargeRecords.unshift({
+                id: `r-${Date.now()}`,
+                accountId,
+                provider: account.provider,
+                accountName: account.name,
+                amount,
+                currency: account.currency,
+                time: document.getElementById('rechargeTime').value.replace('T', ' ') + ':00',
+                operator: document.getElementById('rechargeOperator').value,
+                beforeBalance,
+                afterBalance: account.balance,
+                voucher: document.getElementById('rechargeVoucher').value,
+                remark: document.getElementById('rechargeRemark').value
+            });
+            closeModal('rechargeModal');
+            renderAll();
+            showToast('充值记录已添加，余额已更新');
+        }
+        function openRechargeRecordsModal(accountId) {
+            const rows = rechargeRecords.filter(item => item.accountId === accountId);
+            document.getElementById('rechargeRecordsTable').innerHTML = `<thead><tr>${['充值时间', '充值金额', '币种', '充值前余额', '充值后余额', '操作人', '充值凭证', '备注'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${item.time}</td><td>${money(item.amount)}</td><td>${item.currency}</td><td>${money(item.beforeBalance)}</td><td>${money(item.afterBalance)}</td><td>${item.operator}</td><td>${item.voucher || '-'}</td><td>${item.remark || '-'}</td></tr>`).join('')}</tbody>`;
+            document.getElementById('rechargeRecordsModal').style.display = 'flex';
+        }
+        function openAccountConsumeModal(accountId) {
+            const account = getAccountById(accountId);
+            const detailRows = [];
+            accountCostLogs.filter(log => log.accountId === accountId).forEach(log => {
+                detailRows.push({ time: log.time, type: log.type, ip: '-', raw: log.amount, discount: 0, actual: log.amount, source: '手动录入', remark: log.remark });
+            });
+            nodes.filter(node => node.accountId === accountId).forEach(node => {
+                const cost = getNodeCost(node);
+                if (cost.total === null) return;
+                detailRows.push({ time: node.period, type: '节点消耗', ip: node.ip, raw: cost.total, discount: cost.discountAmount, actual: cost.discounted, source: node.billSource, remark: node.deadReason || '-' });
+            });
+            document.getElementById('accountConsumeTable').innerHTML = `<thead><tr>${['消费时间', '消费类型', '关联节点 IP', '原始金额', '账号折扣', '折扣金额', '实际消费金额', '余额变动', '账单来源', '备注'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${detailRows.map(item => `<tr><td>${item.time}</td><td>${item.type}</td><td>${item.ip}</td><td>${money(item.raw)}</td><td>${isFinanceRole() ? Math.round(account.discountRate * 100) + '%' : '-'}</td><td>${isFinanceRole() ? money(item.discount) : '-'}</td><td>${money(item.actual)}</td><td>${money(-item.actual)}</td><td>${item.source}</td><td>${item.remark}</td></tr>`).join('')}</tbody>`;
+            document.getElementById('accountConsumeModal').style.display = 'flex';
+        }
+        function viewAccountNodes(accountId) {
+            document.getElementById('accountFilter').value = accountId;
+            applyFilters();
+            document.querySelectorAll('.tabs .tab').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.section-panel .tabs')[1].querySelectorAll('.tab')[0].classList.add('active');
+            nodeTab = 'nodes';
+            document.getElementById('dataTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function openDeadNodeModal(nodeId) {
+            const node = nodes.find(item => item.id === nodeId);
+            pendingDeadNodeId = nodeId;
+            document.getElementById('deadNodeIp').value = node.ip;
+            document.getElementById('deadNodeAccount').value = node.accountName;
+            document.getElementById('deadNodeTime').value = toDateInput(new Date());
+            document.getElementById('deadNodeReason').value = '节点失效';
+            document.getElementById('deadNodeRemark').value = '';
+            document.getElementById('deadNodeModal').style.display = 'flex';
+        }
+        function confirmMarkNodeDead() {
+            const node = nodes.find(item => item.id === pendingDeadNodeId);
+            if (!node) return;
+            node.lifecycle = '已挂掉';
+            node.nodeStatus = '已挂掉';
+            node.deadAt = document.getElementById('deadNodeTime').value.replace('T', ' ') + ':00';
+            node.deadReason = document.getElementById('deadNodeReason').value;
+            node.recoverable = '不可恢复';
+            closeModal('deadNodeModal');
+            renderAll();
+            showToast('节点已标记为挂掉，费用不会退回');
+        }
+        function renderImportPreview() {
+            document.getElementById('batchImportTable').innerHTML = `<thead><tr>${['行号', '节点 IP', '服务商', '服务商账号', '服务商地区', '账号基础费用', '账号折扣', '国家/地区', '服务器配置', '系统型号', '校验状态', '异常原因', '处理方式'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${importPreviewRows.map(item => `<tr><td>${item.row}</td><td>${item.ip}</td><td>${item.provider}</td><td>${item.account}</td><td>${item.region}</td><td>${money(item.baseFee)}</td><td>${Math.round(item.discountRate * 100)}%</td><td>${item.country}</td><td>${item.spec}</td><td>${item.system}</td><td>${item.status}</td><td>${item.reason}</td><td>${item.action}</td></tr>`).join('')}</tbody>`;
+        }
+        function mockUploadImportFile() {
+            renderImportPreview();
+            document.getElementById('batchImportModal').style.display = 'flex';
+            showToast('已读取 mock 导入文件，正在生成预览');
+        }
+        function applyImportRows() {
+            closeModal('batchImportModal');
+            showToast('已仅导入通过数据');
+        }
+        function openBatchImportModal() {
+            renderImportPreview();
+            document.getElementById('batchImportModal').style.display = 'flex';
+        }
+        function openDetailModal(nodeId) {
+            const node = nodes.find(item => item.id === nodeId);
+            const cost = getNodeCost(node);
+            const account = getAccountById(node.accountId);
+            document.getElementById('detailNodeInfo').innerHTML = infoHtml([['节点 IP', node.ip], ['服务商账号', node.accountName], ['服务商', node.provider], ['统计周期', node.period], ['账单来源', node.billSource], ['同步时间', node.sync]]);
+            document.getElementById('detailNotice').style.display = 'block';
+            document.getElementById('detailNotice').innerText = node.billSource === '服务商账单接口' ? '服务商原始账单明细' : '系统计算过程';
+            if (node.billSource === '服务商账单接口') {
+                const rows = [
+                    { billId: `BILL-${node.id}-S`, time: `${node.period} 08:00:00`, type: '服务器费用', product: node.serverSpec, resourceId: node.accountCode, unitPrice: money(node.serverUnitPrice), qty: node.serverBilling === '包月' ? '1 月' : `${node.serverDurationHours} 小时`, raw: node.serverCost + node.systemFee + node.bandwidthFee },
+                    { billId: `BILL-${node.id}-T`, time: `${node.period} 08:05:00`, type: '流量费用', product: `${node.country}出口流量`, resourceId: node.accountCode, unitPrice: money(node.trafficUnitPrice), qty: `${node.billableTraffic.toFixed(2)} GB`, raw: node.trafficCost }
+                ];
+                document.getElementById('detailTable').innerHTML = `<thead><tr>${['服务商账单 ID', '账单时间', '费用类型', '产品名称', '实例 ID / 资源 ID', '服务商', '节点 IP', '服务器地区', '服务器配置', '系统型号', '计费方式', '单价', '数量', '原始金额', '折扣率', '折扣金额', '折后金额', '账单来源', '同步批次号', '同步时间'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${item.billId}</td><td>${item.time}</td><td>${item.type}</td><td>${item.product}</td><td>${item.resourceId}</td><td>${node.provider}</td><td>${node.ip}</td><td>${node.serverRegion}</td><td>${node.serverSpec}</td><td>${node.systemModel}</td><td>${node.serverBilling}</td><td>${item.unitPrice}</td><td>${item.qty}</td><td>${money(item.raw)}</td><td>${isFinanceRole() ? Math.round(account.discountRate * 100) + '%' : '-'}</td><td>${isFinanceRole() ? money(item.raw * (1 - account.discountRate)) : '-'}</td><td>${isFinanceRole() ? money(item.raw * account.discountRate) : '-'}</td><td>${node.billSource}</td><td>SYNC-20260430</td><td>${node.sync}</td></tr>`).join('')}</tbody>`;
+            } else {
+                const formula = `服务器 ${money(node.serverCost)} + 系统 ${money(node.systemFee)} + 带宽 ${money(node.bandwidthFee)} + 流量 ${money(node.trafficCost)} = ${money(cost.total || 0)}`;
+                document.getElementById('detailTable').innerHTML = `<thead><tr><th>字段</th><th>值</th></tr></thead><tbody>${[
+                    ['命中的费率规则 ID', `RULE-${node.id}`],
+                    ['服务商', node.provider],
+                    ['服务商账号', node.accountName],
+                    ['服务器地区', node.serverRegion],
+                    ['服务器配置', node.serverSpec],
+                    ['系统型号', node.systemModel],
+                    ['服务器计费方式', node.serverBilling],
+                    ['服务器单价', money(node.serverUnitPrice)],
+                    ['流量计费方式', node.trafficBilling],
+                    ['实际流量', `${node.actualTraffic.toFixed(2)}GB`],
+                    ['计费流量', `${node.billableTraffic.toFixed(2)}GB`],
+                    ['节点消耗公式', formula],
+                    ['原始节点消耗', money(cost.total || 0)],
+                    ['账号折扣', isFinanceRole() ? `${Math.round(account.discountRate * 100)}%` : '当前账号无权限'],
+                    ['折扣金额', isFinanceRole() ? money(cost.discountAmount || 0) : '当前账号无权限'],
+                    ['折后节点消耗', isFinanceRole() ? money(cost.discounted || 0) : '当前账号无权限']
+                ].map(item => `<tr><td>${item[0]}</td><td>${item[1]}</td></tr>`).join('')}</tbody>`;
+            }
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+        function infoHtml(items) {
+            return items.map(item => `<div><div class="info-label">${item[0]}</div><div class="info-value">${item[1]}</div></div>`).join('');
+        }
+        function handleDimensionChange() {
+            const isMonth = document.getElementById('dimension').value === 'month';
+            document.getElementById('dayRange').style.display = isMonth ? 'none' : 'flex';
+            document.getElementById('monthRange').style.display = isMonth ? 'flex' : 'none';
+            renderAll();
+        }
+        function applyFilters() {
+            renderAll();
+        }
+        function resetFilters() {
+            ['providerFilter', 'countryFilter', 'ipFilter', 'serverBillingFilter', 'trafficBillingFilter', 'billSourceFilter', 'statusFilter', 'configFilter', 'accountFilter', 'accountStatusFilter', 'lifecycleFilter', 'newNodeFilter', 'deadNodeFilter'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('dimension').value = 'day';
+            document.getElementById('startDate').value = '2026-04-01';
+            document.getElementById('endDate').value = '2026-04-07';
+            document.getElementById('startMonth').value = '2026-04';
+            document.getElementById('endMonth').value = '2026-05';
+            handleDimensionChange();
+        }
+        function switchRole(role) {
+            currentRole = role;
+            renderAll();
+            showToast(role === 'finance' ? '已切换为财务/管理员视角' : '已切换为普通运维视角');
+        }
+        function syncProviderPrices() {
+            nodes.forEach(node => {
+                if (node.billSource === '服务商账单接口') node.sync = fmtDateTime(new Date());
+            });
+            renderAll();
+            showToast('服务商账单已同步完成');
+        }
+        function syncNode(nodeId) {
+            const node = nodes.find(item => item.id === nodeId);
+            if (!node) return;
+            node.sync = fmtDateTime(new Date());
+            if (node.configStatus === '同步失败') node.configStatus = '已配置';
+            renderAll();
+            showToast(`${node.ip} 已同步账单`);
+        }
+        function exportMock(type) {
+            const label = type === 'account' ? '账号成本数据' : type === 'node' ? '节点消耗数据' : '全部数据';
+            document.getElementById('exportMenu').style.display = 'none';
+            showToast(`已生成导出任务：${label}`);
+        }
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2200);
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+        function renderAll() {
+            renderOverview();
+            renderCharts();
+            renderAccountCostTable();
+            renderNodeSection();
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(item => item.addEventListener('click', event => {
+            if (event.target === item) item.style.display = 'none';
+        }));
+        document.addEventListener('click', event => {
+            const exportMenu = document.getElementById('exportMenu');
+            if (exportMenu && !exportMenu.parentElement.contains(event.target)) exportMenu.style.display = 'none';
+        });
+
+        populateAccountFilterOptions();
+        document.getElementById('accountFilter').value = '';
+        document.getElementById('acctProvider').innerHTML = serviceProviders.map(item => `<option>${item}</option>`).join('');
+        document.getElementById('dimension').value = 'day';
+        document.getElementById('startDate').value = '2026-04-01';
+        document.getElementById('endDate').value = '2026-04-07';
+        document.getElementById('startMonth').value = '2026-04';
+        document.getElementById('endMonth').value = '2026-05';
+        populateNodeConfigSelects();
+        renderImportPreview();
+        renderAll();
+    </script>
+    <script>
+        (() => {
+            const state = {
+                role: 'ops',
+                tab: 'nodes',
+                editingAccountId: '',
+                editingNodeId: '',
+                pendingDeadNodeId: ''
+            };
+
+            accounts.forEach(account => {
+                account.key = account.key || '';
+                account.secret = account.secret || '';
+                account.discountType = account.discountType || (account.discountRate === 1 ? '无折扣' : '比例折扣');
+                account.currency = 'USDT';
+                account.feeCycle = '每月';
+                account.warnBalance = Number(account.warnBalance || 0);
+                account.supportApi = account.supportApi || '是';
+                account.supportBill = account.supportBill || '是';
+                account.syncFreq = account.syncFreq || '手动';
+                account.status = account.status || '启用';
+            });
+            const awsBackup = accounts.find(item => item.id === 'aws-002');
+            if (awsBackup) awsBackup.accountCode = 'aws-japan-account';
+
+            function esc(text) {
+                return String(text ?? '').replace(/[&<>"']/g, chr => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[chr]));
+            }
+            function isFinance() {
+                return state.role === 'finance';
+            }
+            function money2(value) {
+                return '$' + Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            function getBalance(account) {
+                return Number(account.cumulativeRecharge || 0) - Number(account.cumulativeUse || 0);
+            }
+            function getAccountStatus2(account) {
+                if (!account) return '未配置接口';
+                if (account.status === '停用') return '停用';
+                if (account.supportApi === '否' && account.supportBill === '否') return '未配置接口';
+                if (getBalance(account) <= Number(account.warnBalance || 0)) return '余额不足';
+                return '启用';
+            }
+            function tag(text) {
+                const cls = ['启用', '开启', '正常', '已配置', '可恢复'].includes(text) ? 'green'
+                    : ['停用', '关闭', '余额不足', '同步失败', '故障'].includes(text) ? 'orange'
+                    : 'red';
+                return `<span class="tag ${cls}">${esc(text)}</span>`;
+            }
+            function rangeInfo() {
+                const dim = document.getElementById('dimension').value;
+                if (dim === 'day') {
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+                    const days = dailyTrendData.map(item => item.date).sort();
+                    return { dim, start: start || days[0], end: end || days[days.length - 1], rawStart: start, rawEnd: end };
+                }
+                const startMonth = document.getElementById('startMonth').value;
+                const endMonth = document.getElementById('endMonth').value;
+                const months = monthlyTrendData.map(item => item.month).sort();
+                return { dim, start: startMonth || months[0], end: endMonth || months[months.length - 1], rawStart: startMonth, rawEnd: endMonth };
+            }
+            function inRange2(dateText) {
+                if (!dateText) return false;
+                const range = rangeInfo();
+                if (range.dim === 'day') {
+                    if (!range.rawStart && !range.rawEnd) return true;
+                    const day = String(dateText).slice(0, 10);
+                    return day >= range.start && day <= range.end;
+                }
+                if (!range.rawStart && !range.rawEnd) return true;
+                const month = String(dateText).slice(0, 7);
+                return month >= range.start && month <= range.end;
+            }
+            function getAccount(accountId) {
+                return accounts.find(item => item.id === accountId);
+            }
+            function nodeCost(node) {
+                if (node.billSource === '未配置' || node.configStatus === '未配置') {
+                    return { configured: false, server: 0, system: 0, bandwidth: 0, traffic: 0, total: 0, discountRate: 1, discountAmount: 0, discounted: 0 };
+                }
+                const account = getAccount(node.accountId);
+                const discountRate = Number(account?.discountRate || 1);
+                const server = Number(node.serverCost || 0);
+                const system = Number(node.systemFee || 0);
+                const bandwidth = Number(node.bandwidthFee || 0);
+                const traffic = Number(node.trafficCost || 0);
+                const total = server + system + bandwidth + traffic;
+                const discountAmount = total * (1 - discountRate);
+                return { configured: true, server, system, bandwidth, traffic, total, discountRate, discountAmount, discounted: total - discountAmount };
+            }
+            function filters() {
+                return {
+                    provider: document.getElementById('providerFilter').value,
+                    country: document.getElementById('countryFilter').value,
+                    ip: document.getElementById('ipFilter').value.trim(),
+                    serverBilling: document.getElementById('serverBillingFilter').value,
+                    trafficBilling: document.getElementById('trafficBillingFilter').value,
+                    billSource: document.getElementById('billSourceFilter').value,
+                    status: document.getElementById('statusFilter').value,
+                    config: document.getElementById('configFilter').value,
+                    accountId: document.getElementById('accountFilter').value.trim(),
+                    accountStatus: document.getElementById('accountStatusFilter').value,
+                    lifecycle: document.getElementById('lifecycleFilter').value,
+                    newNode: document.getElementById('newNodeFilter').value,
+                    deadNode: document.getElementById('deadNodeFilter').value
+                };
+            }
+            function normalizedNodeStatus(node) {
+                return node.lifecycle === '已挂掉' || node.nodeStatus === '故障' || node.nodeStatus === '已挂掉' ? '已挂掉' : node.nodeStatus;
+            }
+            function nodeMatch(node, opts = {}) {
+                const f = filters();
+                const account = getAccount(node.accountId);
+                if (f.provider && node.provider !== f.provider) return false;
+                if (f.country && node.country !== f.country) return false;
+                if (f.ip && !node.ip.includes(f.ip)) return false;
+                if (f.serverBilling && node.serverBilling !== f.serverBilling) return false;
+                if (f.trafficBilling && node.trafficBilling !== f.trafficBilling) return false;
+                if (f.billSource && node.billSource !== f.billSource) return false;
+                if (f.status && normalizedNodeStatus(node) !== f.status) return false;
+                if (f.config && node.configStatus !== f.config) return false;
+                if (f.accountId) {
+                    const keyword = f.accountId.toLowerCase();
+                    const accountName = (node.accountName || '').toLowerCase();
+                    const accountCode = (node.accountCode || '').toLowerCase();
+                    if (!accountName.includes(keyword) && !accountCode.includes(keyword)) return false;
+                }
+                if (f.accountStatus && getAccountStatus2(account) !== f.accountStatus) return false;
+                if (f.lifecycle && node.lifecycle !== f.lifecycle) return false;
+                if (!opts.ignorePeriodFlags) {
+                    if (f.newNode === '本期新增' && !inRange2(node.createdAt)) return false;
+                    if (f.newNode === '非本期新增' && inRange2(node.createdAt)) return false;
+                    if (f.deadNode === '本期挂掉' && (!node.deadAt || !inRange2(node.deadAt))) return false;
+                    if (f.deadNode === '历史挂掉' && (!node.deadAt || inRange2(node.deadAt))) return false;
+                    if (f.deadNode === '未挂掉' && node.deadAt) return false;
+                }
+                if (!opts.ignoreTime && !inRange2(node.period)) return false;
+                return true;
+            }
+            function visibleNodes() {
+                return nodes.filter(node => nodeMatch(node));
+            }
+            function snapshotNodes() {
+                return nodes.filter(node => nodeMatch(node, { ignoreTime: true, ignorePeriodFlags: true }));
+            }
+            function visibleAccounts() {
+                const f = filters();
+                return accounts.filter(account => {
+                    if (f.provider && account.provider !== f.provider) return false;
+                    if (f.country && account.country !== f.country) return false;
+                    if (f.accountId) {
+                        const keyword = f.accountId.toLowerCase();
+                        if (!account.name.toLowerCase().includes(keyword) && !(account.accountCode || '').toLowerCase().includes(keyword)) return false;
+                    }
+                    if (f.accountStatus && getAccountStatus2(account) !== f.accountStatus) return false;
+                    return true;
+                });
+            }
+            function renderCards2(targetId, cards) {
+                const colors = ['#1890ff', '#52c41a', '#fa8c16', '#13c2c2', '#ff4d4f', '#722ed1', '#2f54eb', '#a0d911'];
+                document.getElementById(targetId).innerHTML = cards.map((card, index) => `<div class="stat-card" style="border-left-color:${colors[index % colors.length]};"><div class="stat-title">${esc(card.title)}</div><div class="stat-value">${esc(card.value)}</div><div class="stat-desc">${esc(card.desc)}</div></div>`).join('');
+            }
+            function renderOverview2() {
+                const nodeRows = visibleNodes();
+                const accountRows = visibleAccounts();
+                const periodRecharge = rechargeRecords.filter(item => accountRows.some(account => account.id === item.accountId) && inRange2(item.time)).reduce((sum, item) => sum + item.amount, 0);
+                const periodAccountCost = accountCostLogs.filter(item => accountRows.some(account => account.id === item.accountId) && inRange2(item.time)).reduce((sum, item) => sum + item.amount, 0);
+                const periodServerCost = nodeRows.reduce((sum, node) => sum + nodeCost(node).server, 0);
+                const periodTrafficCost = nodeRows.reduce((sum, node) => sum + nodeCost(node).traffic, 0);
+                const periodUse = periodAccountCost + nodeRows.reduce((sum, node) => sum + nodeCost(node).discounted, 0);
+                const periodNew = nodeRows.filter(node => inRange2(node.createdAt)).length;
+                const periodDead = nodeRows.filter(node => node.deadAt && inRange2(node.deadAt)).length;
+
+                const snapAccounts = visibleAccounts();
+                const snapNodes = snapshotNodes();
+                renderCards2('periodOverviewCards', [
+                    { title: '总成本', value: money2(periodUse), desc: '账号成本 + 节点消耗' },
+                    { title: '充值金额', value: money2(periodRecharge), desc: '当前时间范围内手动录入的充值金额' },
+                    { title: '使用金额', value: money2(periodUse), desc: '当前时间范围内实际消耗金额' },
+                    { title: '账号成本', value: money2(periodAccountCost), desc: '账号基础费用及账号层固定费用' },
+                    { title: '服务器成本', value: money2(periodServerCost), desc: '当前时间范围内节点服务器成本合计' },
+                    { title: '流量成本', value: money2(periodTrafficCost), desc: '当前时间范围内节点流量成本合计' },
+                    { title: '新增节点数', value: String(periodNew), desc: '当前时间范围内新增节点数量' },
+                    { title: '挂掉节点数', value: String(periodDead), desc: '当前时间范围内挂掉节点数量' }
+                ]);
+                renderCards2('snapshotOverviewCards', [
+                    { title: '当前余额', value: money2(snapAccounts.reduce((sum, account) => sum + getBalance(account), 0)), desc: '累计充值金额 - 累计使用金额' },
+                    { title: '当前账号数', value: String(snapAccounts.length), desc: '当前筛选范围内服务商账号数量' },
+                    { title: '启用账号数', value: String(snapAccounts.filter(account => getAccountStatus2(account) === '启用').length), desc: '当前启用中的服务商账号数量' },
+                    { title: '当前节点数', value: String(snapNodes.filter(node => node.lifecycle !== '已删除').length), desc: '当前筛选范围内节点总数' },
+                    { title: '当前可用节点数', value: String(snapNodes.filter(node => node.lifecycle === '正常').length), desc: '当前未挂掉、未删除的节点数量' }
+                ]);
+            }
+            function renderCharts2() {
+                const range = rangeInfo();
+                const series = range.dim === 'day'
+                    ? listDates(range.start, range.end).map(date => dailyTrendData.find(item => item.date === date) || { date, total: 0, accountCost: 0, server: 0, traffic: 0, recharge: 0 })
+                    : listMonths(range.start, range.end).map(month => monthlyTrendData.find(item => item.month === month) || { month, total: 0, accountCost: 0, server: 0, traffic: 0, recharge: 0 });
+                const metrics = [
+                    { key: 'total', label: '总成本', color: '#1890ff' },
+                    { key: 'accountCost', label: '账号成本', color: '#13c2c2' },
+                    { key: 'server', label: '服务器成本', color: '#52c41a' },
+                    { key: 'traffic', label: '流量成本', color: '#fa8c16' },
+                    { key: 'recharge', label: '充值金额', color: '#722ed1' }
+                ];
+                const maxValue = Math.max(...series.flatMap(item => metrics.map(metric => item[metric.key])), 1);
+                document.getElementById('trendHint').innerText = range.dim === 'day' ? `${range.start} 至 ${range.end} 日成本` : `${range.start} 至 ${range.end} 月成本`;
+                document.getElementById('trendChart').innerHTML = `<div class="chart-columns">${series.map(item => `<div class="column-group"><div class="column-bars">${metrics.map(metric => `<div class="chart-column" style="height:${Math.max(item[metric.key] / maxValue * 220, 4)}px;background:${metric.color};"></div>`).join('')}</div><div class="chart-label">${esc(range.dim === 'day' ? item.date.slice(5) : item.month)}</div></div>`).join('')}</div>`;
+                document.getElementById('trendLegend').innerHTML = metrics.map(metric => `<div><span class="legend-dot" style="background:${metric.color};"></span>${metric.label}</div>`).join('');
+
+                const providerMap = {};
+                const countryMap = {};
+                visibleNodes().forEach(node => {
+                    const cost = nodeCost(node);
+                    if (!cost.configured) return;
+                    providerMap[node.provider] = (providerMap[node.provider] || 0) + cost.discounted;
+                    countryMap[node.country] = (countryMap[node.country] || 0) + cost.discounted;
+                });
+                const providerTotal = Object.values(providerMap).reduce((sum, item) => sum + item, 0) || 1;
+                const countryTotal = Object.values(countryMap).reduce((sum, item) => sum + item, 0) || 1;
+                document.getElementById('providerChart').innerHTML = Object.entries(providerMap).map(([key, value]) => `<div class="dist-row"><div class="dist-name">${esc(key)}</div><div class="dist-track"><div class="dist-fill" style="width:${value / providerTotal * 100}%;background:${providerColors[key] || '#1890ff'};"></div></div><div class="dist-value">${(value / providerTotal * 100).toFixed(1)}%</div></div>`).join('') || '<div style="color:#bfbfbf;">暂无数据</div>';
+                document.getElementById('countryChart').innerHTML = Object.entries(countryMap).map(([key, value]) => `<div class="dist-row"><div class="dist-name">${esc(key)}</div><div class="dist-track"><div class="dist-fill" style="width:${value / countryTotal * 100}%;background:${countryColors[key] || '#1890ff'};"></div></div><div class="dist-value">${(value / countryTotal * 100).toFixed(1)}%</div></div>`).join('') || '<div style="color:#bfbfbf;">暂无数据</div>';
+            }
+            function renderAccountTable2() {
+                const headers = ['服务商', '账号名称', '账号 ID', '账号状态', '关联节点数', '当前可用节点数', '累计挂掉节点数', '账号基础费用'];
+                if (isFinance()) headers.push('账号折扣');
+                headers.push('累计充值金额', '筛选期充值金额', '累计使用金额', '当前余额', '最近充值时间', '最近消费时间', '操作');
+                const rows = visibleAccounts();
+                document.getElementById('accountCostTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(account => {
+                    const accountNodes = nodes.filter(node => node.accountId === account.id);
+                    const periodRecharge = rechargeRecords.filter(item => item.accountId === account.id && inRange2(item.time)).reduce((sum, item) => sum + item.amount, 0);
+                    const lastRecharge = rechargeRecords.filter(item => item.accountId === account.id).sort((a, b) => parseDate(b.time) - parseDate(a.time))[0];
+                    const lastConsume = accountNodes.filter(node => nodeCost(node).configured).sort((a, b) => parseDate(b.period) - parseDate(a.period))[0];
+                    return `<tr>
+                        <td>${esc(account.provider)}</td>
+                        <td>${esc(account.name)}</td>
+                        <td>${esc(account.accountCode)}</td>
+                        <td>${tag(getAccountStatus2(account))}</td>
+                        <td>${accountNodes.length}</td>
+                        <td>${accountNodes.filter(node => node.lifecycle === '正常').length}</td>
+                        <td>${accountNodes.filter(node => node.lifecycle === '已挂掉').length}</td>
+                        <td>${money2(account.baseFee)}</td>
+                        ${isFinance() ? `<td>${account.discountRate === 1 ? '无折扣' : `${Math.round(account.discountRate * 100)}%`}</td>` : ''}
+                        <td>${money2(account.cumulativeRecharge)}</td>
+                        <td>${money2(periodRecharge)}</td>
+                        <td>${money2(account.cumulativeUse)}</td>
+                        <td>${money2(getBalance(account))}</td>
+                        <td>${lastRecharge ? esc(lastRecharge.time) : '-'}</td>
+                        <td>${lastConsume ? esc(lastConsume.period) : '-'}</td>
+                        <td><a class="action-link" onclick="openRechargeModal('${account.id}')">充值</a><a class="action-link" onclick="openRechargeRecordsModal('${account.id}')">充值记录</a><a class="action-link" onclick="openAccountConsumeModal('${account.id}')">消费明细</a><a class="action-link" onclick="openAccountModal('${account.id}')">编辑账号</a></td>
+                    </tr>`;
+                }).join('')}</tbody>`;
+            }
+            function renderNodeTable2() {
+                const rows = visibleNodes();
+                const headers = ['统计日期', '节点 IP', '服务商账号', '账号 ID', '服务商', '国家/地区', '服务器地区', '服务器配置', '系统型号', '节点状态', '新增时间', '挂掉时间', '账单来源', '服务器计费方式', '服务器单价', '服务器成本', '系统版本费用', '带宽费用', '流量计费方式', '实际流量', '计费流量', '流量成本', '节点消耗'];
+                if (isFinance()) headers.push('账号折扣', '折扣金额', '折后节点消耗');
+                headers.push('成本配置状态', '最后同步时间', '操作');
+                document.getElementById('dataTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(node => {
+                    const cost = nodeCost(node);
+                    const account = getAccount(node.accountId);
+                    const operation = node.billSource === '服务商账单接口'
+                        ? `<a class="action-link" onclick="syncNode('${node.id}')">同步账单</a>`
+                        : `<a class="action-link" onclick="openCostModal('${node.id}')">编辑节点配置</a>`;
+                    return `<tr>
+                        <td>${esc(node.period)}</td>
+                        <td>${esc(node.ip)}</td>
+                        <td>${esc(node.accountName)}</td>
+                        <td>${esc(node.accountCode)}</td>
+                        <td>${esc(node.provider)}</td>
+                        <td>${esc(node.country)}</td>
+                        <td>${esc(node.serverRegion)}</td>
+                        <td>${esc(node.serverSpec)}</td>
+                        <td>${esc(node.systemModel)}</td>
+                        <td>${tag(normalizedNodeStatus(node))}</td>
+                        <td>${esc(node.createdAt || '-')}</td>
+                        <td>${esc(node.deadAt || '-')}</td>
+                        <td>${esc(node.billSource)}</td>
+                        <td>${esc(node.serverBilling)}</td>
+                        <td>${cost.configured ? money2(node.serverUnitPrice) : '-'}</td>
+                        <td>${cost.configured ? money2(cost.server) : '-'}</td>
+                        <td>${cost.configured ? money2(cost.system) : '-'}</td>
+                        <td>${cost.configured ? money2(cost.bandwidth) : '-'}</td>
+                        <td>${esc(node.trafficBilling)}</td>
+                        <td>${Number(node.actualTraffic || 0).toFixed(2)}GB</td>
+                        <td>${Number(node.billableTraffic || 0).toFixed(2)}GB</td>
+                        <td>${cost.configured ? money2(cost.traffic) : '-'}</td>
+                        <td>${cost.configured ? money2(cost.total) : '-'}</td>
+                        ${isFinance() ? `<td>${account && account.discountRate !== 1 ? `${Math.round(account.discountRate * 100)}%` : '无折扣'}</td><td>${cost.configured ? money2(cost.discountAmount) : '-'}</td><td>${cost.configured ? money2(cost.discounted) : '-'}</td>` : ''}
+                        <td>${tag(node.configStatus)}</td>
+                        <td>${esc(node.sync)}</td>
+                        <td>${operation}</td>
+                    </tr>`;
+                }).join('')}</tbody>`;
+            }
+            function renderProviderSummary2() {
+                const map = {};
+                visibleNodes().forEach(node => {
+                    const cost = nodeCost(node);
+                    map[node.provider] = map[node.provider] || { provider: node.provider, accounts: new Set(), nodes: 0, live: 0, dead: 0, server: 0, traffic: 0, total: 0 };
+                    const item = map[node.provider];
+                    item.accounts.add(node.accountId);
+                    item.nodes += 1;
+                    if (node.lifecycle === '正常') item.live += 1;
+                    if (node.lifecycle === '已挂掉') item.dead += 1;
+                    item.server += cost.server + cost.system + cost.bandwidth;
+                    item.traffic += cost.traffic;
+                    item.total += cost.total;
+                });
+                const rows = Object.values(map);
+                document.getElementById('dataTable').innerHTML = `<thead><tr>${['服务商', '账号数', '节点数', '当前可用节点数', '挂掉节点数', '服务器成本', '流量成本', '节点消耗'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${esc(item.provider)}</td><td>${item.accounts.size}</td><td>${item.nodes}</td><td>${item.live}</td><td>${item.dead}</td><td>${money2(item.server)}</td><td>${money2(item.traffic)}</td><td>${money2(item.total)}</td></tr>`).join('')}</tbody>`;
+            }
+            function renderCountrySummary2() {
+                const map = {};
+                visibleNodes().forEach(node => {
+                    const cost = nodeCost(node);
+                    map[node.country] = map[node.country] || { country: node.country, accounts: new Set(), nodes: 0, live: 0, dead: 0, server: 0, traffic: 0, total: 0 };
+                    const item = map[node.country];
+                    item.accounts.add(node.accountId);
+                    item.nodes += 1;
+                    if (node.lifecycle === '正常') item.live += 1;
+                    if (node.lifecycle === '已挂掉') item.dead += 1;
+                    item.server += cost.server + cost.system + cost.bandwidth;
+                    item.traffic += cost.traffic;
+                    item.total += cost.total;
+                });
+                const rows = Object.values(map);
+                document.getElementById('dataTable').innerHTML = `<thead><tr>${['国家/地区', '账号数', '节点数', '当前可用节点数', '挂掉节点数', '服务器成本', '流量成本', '节点消耗'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${esc(item.country)}</td><td>${item.accounts.size}</td><td>${item.nodes}</td><td>${item.live}</td><td>${item.dead}</td><td>${money2(item.server)}</td><td>${money2(item.traffic)}</td><td>${money2(item.total)}</td></tr>`).join('')}</tbody>`;
+            }
+            function renderNodeSection2() {
+                document.getElementById('permissionHint').style.display = 'none';
+                document.getElementById('tableSummary').style.display = 'none';
+                if (state.tab === 'nodes') renderNodeTable2();
+                if (state.tab === 'providers') renderProviderSummary2();
+                if (state.tab === 'countries') renderCountrySummary2();
+            }
+            function refreshNodeConfigOptions() {
+                const provider = document.getElementById('nodeProvider').value;
+                const accountOptions = accounts.filter(account => account.provider === provider).map(account => `<option value="${account.id}">${esc(account.name)}</option>`);
+                document.getElementById('nodeCloudAccount').innerHTML = accountOptions.join('');
+                const specs = resourceDict.spec.filter(item => item.provider === provider);
+                document.getElementById('nodeSpec').innerHTML = specs.length ? specs.map(item => `<option value="${item.display}">${esc(item.display)} / ${esc(item.code)}</option>`).join('') : '<option value="未获取到服务器配置，请在费用组成补充价格">未获取到服务器配置，请在费用组成补充价格</option>';
+                const systems = resourceDict.system.filter(item => item.provider === provider);
+                document.getElementById('nodeSystemModel').innerHTML = systems.length ? systems.map(item => `<option value="${item.model}">${esc(item.model)}</option>`).join('') : '<option value="未获取到系统型号">未获取到系统型号</option>';
+                window.handleAccountChange();
+            }
+            function roleVisibility() {
+                const showDiscount = isFinance();
+                document.getElementById('acctDiscount').parentElement.parentElement.style.display = 'block';
+                document.getElementById('acctDiscountType').parentElement.style.display = 'block';
+                document.getElementById('acctDiscountPermission').parentElement.style.display = 'none';
+            }
+            function fullRender() {
+                renderOverview2();
+                renderCharts2();
+                renderAccountTable2();
+                renderNodeSection2();
+            }
+
+            window.renderAll = fullRender;
+            window.applyFilters = fullRender;
+            window.switchRole = role => {
+                state.role = role;
+                roleVisibility();
+                fullRender();
+                showToast(role === 'finance' ? '已切换为财务/管理员视角' : '已切换为普通运维视角');
+            };
+            window.switchTab = (tab, target) => {
+                state.tab = tab;
+                target.parentElement.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+                target.classList.add('active');
+                renderNodeSection2();
+            };
+            window.handleDimensionChange = () => {
+                const isMonth = document.getElementById('dimension').value === 'month';
+                document.getElementById('dayRange').style.display = isMonth ? 'none' : 'flex';
+                document.getElementById('monthRange').style.display = isMonth ? 'flex' : 'none';
+                fullRender();
+            };
+            window.resetFilters = () => {
+                ['providerFilter', 'countryFilter', 'ipFilter', 'serverBillingFilter', 'trafficBillingFilter', 'billSourceFilter', 'statusFilter', 'configFilter', 'accountFilter', 'accountStatusFilter', 'lifecycleFilter', 'newNodeFilter', 'deadNodeFilter'].forEach(id => { document.getElementById(id).value = ''; });
+                document.getElementById('dimension').value = 'day';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                document.getElementById('startMonth').value = '2026-01';
+                document.getElementById('endMonth').value = '2026-04';
+                window.handleDimensionChange();
+            };
+            window.openAccountModal = accountId => {
+                state.editingAccountId = accountId || '';
+                roleVisibility();
+                document.getElementById('acctProvider').innerHTML = serviceProviders.map(item => `<option>${item}</option>`).join('');
+                if (accountId) {
+                    const account = getAccount(accountId);
+                    document.getElementById('accountModalTitle').innerText = '编辑账号';
+                    document.getElementById('acctProvider').value = account.provider;
+                    document.getElementById('acctName').value = account.name;
+                    document.getElementById('acctId').value = account.accountCode;
+                    document.getElementById('acctKey').value = account.key || '';
+                    document.getElementById('acctSecret').value = account.secret || '';
+                    document.getElementById('acctCountry').value = account.country;
+                    document.getElementById('acctRegion').value = account.region;
+                    document.getElementById('acctBaseFee').value = account.baseFee;
+                    document.getElementById('acctDiscountType').value = account.discountType;
+                    document.getElementById('acctDiscount').value = Math.round(account.discountRate * 100);
+                    document.getElementById('acctDiscountPermission').value = account.discountPermission;
+                    document.getElementById('acctRemark').value = account.remark || '';
+                } else {
+                    document.getElementById('accountModalTitle').innerText = '新增账号';
+                    ['acctName', 'acctId', 'acctKey', 'acctSecret', 'acctRegion', 'acctBaseFee', 'acctDiscount', 'acctRemark'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('acctProvider').value = 'AWS';
+                    document.getElementById('acctCountry').value = '日本';
+                    document.getElementById('acctDiscountType').value = '无折扣';
+                    document.getElementById('acctDiscountPermission').value = '仅财务/管理员可见';
+                }
+                document.getElementById('accountModal').style.display = 'flex';
+            };
+            window.saveAccount = () => {
+                const discountType = document.getElementById('acctDiscountType').value;
+                const payload = {
+                    provider: document.getElementById('acctProvider').value,
+                    name: document.getElementById('acctName').value.trim(),
+                    accountCode: document.getElementById('acctId').value.trim() || `acct-${Date.now()}`,
+                    key: document.getElementById('acctKey').value.trim(),
+                    secret: document.getElementById('acctSecret').value.trim(),
+                    country: document.getElementById('acctCountry').value,
+                    region: document.getElementById('acctRegion').value.trim() || '未设置',
+                    currency: 'USDT',
+                    baseFee: Number(document.getElementById('acctBaseFee').value || 0),
+                    feeCycle: '每月',
+                    discountType,
+                    discountRate: discountType === '比例折扣' ? Number(document.getElementById('acctDiscount').value || 100) / 100 : 1,
+                    discountPermission: document.getElementById('acctDiscountPermission').value,
+                    warnBalance: 0,
+                    supportApi: '是',
+                    supportBill: '是',
+                    syncFreq: '手动',
+                    status: '启用',
+                    remark: document.getElementById('acctRemark').value
+                };
+                if (!payload.name) {
+                    showToast('请填写账号名称');
+                    return;
+                }
+                if (state.editingAccountId) {
+                    Object.assign(getAccount(state.editingAccountId), payload);
+                } else {
+                    accounts.unshift({ id: `acct-${Date.now()}`, cumulativeRecharge: 0, cumulativeUse: 0, ...payload });
+                }
+                populateAccountFilterOptions();
+                closeModal('accountModal');
+                fullRender();
+                showToast('账号已保存');
+            };
+            window.openRechargeModal = accountId => {
+                const account = getAccount(accountId);
+                document.getElementById('rechargeProvider').value = account.provider;
+                document.getElementById('rechargeAccount').value = account.name;
+                document.getElementById('rechargeBalance').value = money2(getBalance(account));
+                document.getElementById('rechargeAmount').value = '';
+                document.getElementById('rechargeRemark').value = '';
+                document.getElementById('rechargeModal').dataset.accountId = accountId;
+                document.getElementById('rechargeModal').style.display = 'flex';
+            };
+            window.saveRecharge = () => {
+                const accountId = document.getElementById('rechargeModal').dataset.accountId;
+                const account = getAccount(accountId);
+                const amount = Number(document.getElementById('rechargeAmount').value || 0);
+                if (!amount) {
+                    showToast('请填写充值金额');
+                    return;
+                }
+                const beforeBalance = getBalance(account);
+                account.cumulativeRecharge += amount;
+                rechargeRecords.unshift({ id: `recharge-${Date.now()}`, accountId, provider: account.provider, accountName: account.name, amount, currency: account.currency, time: fmtDateTime(new Date()), operator: 'admin', beforeBalance, afterBalance: beforeBalance + amount, voucher: '', remark: document.getElementById('rechargeRemark').value });
+                closeModal('rechargeModal');
+                fullRender();
+                showToast('充值记录已添加，余额已更新');
+            };
+            window.openRechargeRecordsModal = accountId => {
+                const rows = rechargeRecords.filter(item => item.accountId === accountId).sort((a, b) => parseDate(b.time) - parseDate(a.time));
+                document.getElementById('rechargeRecordsTable').innerHTML = `<thead><tr>${['充值时间', '充值金额', '充值前余额', '充值后余额', '备注'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${esc(item.time)}</td><td>${money2(item.amount)}</td><td>${money2(item.beforeBalance)}</td><td>${money2(item.afterBalance)}</td><td>${esc(item.remark || '-')}</td></tr>`).join('')}</tbody>`;
+                document.getElementById('rechargeRecordsModal').style.display = 'flex';
+            };
+            window.openAccountConsumeModal = accountId => {
+                const account = getAccount(accountId);
+                const rows = [];
+                accountCostLogs.filter(item => item.accountId === accountId).forEach(item => rows.push({ time: item.time, type: item.type, ip: '-', raw: item.amount, discount: 0, actual: item.amount, source: item.source || '手动录入', remark: item.remark || '' }));
+                nodes.filter(node => node.accountId === accountId).forEach(node => {
+                    const cost = nodeCost(node);
+                    if (!cost.configured) return;
+                    rows.push({ time: node.period, type: '节点消耗', ip: node.ip, raw: cost.total, discount: cost.discountAmount, actual: cost.discounted, source: node.billSource, remark: node.deadReason || '-' });
+                });
+                rows.sort((a, b) => parseDate(b.time) - parseDate(a.time));
+                const headers = ['消费时间', '消费类型', '关联节点 IP', '原始金额'];
+                if (isFinance()) headers.push('账号折扣', '折扣金额', '实际消费金额');
+                else headers.push('实际消费金额');
+                headers.push('余额变动', '账单来源', '备注');
+                document.getElementById('accountConsumeTable').innerHTML = `<thead><tr>${headers.map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr><td>${esc(item.time)}</td><td>${esc(item.type)}</td><td>${esc(item.ip)}</td><td>${money2(item.raw)}</td>${isFinance() ? `<td>${account.discountRate === 1 ? '无折扣' : `${Math.round(account.discountRate * 100)}%`}</td><td>${money2(item.discount)}</td><td>${money2(item.actual)}</td>` : `<td>${money2(item.actual)}</td>`}<td>${money2(-item.actual)}</td><td>${esc(item.source)}</td><td>${esc(item.remark || '-')}</td></tr>`).join('')}</tbody>`;
+                document.getElementById('accountConsumeModal').style.display = 'flex';
+            };
+            window.viewAccountNodes = accountId => {
+                document.getElementById('accountFilter').value = accountId;
+                state.tab = 'nodes';
+                document.querySelectorAll('.section-panel .tabs .tab').forEach((item, index) => item.classList.toggle('active', index === 0));
+                fullRender();
+                document.getElementById('dataTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+            window.handleProviderChange = refreshNodeConfigOptions;
+            window.handleAccountChange = () => {
+                const account = getAccount(document.getElementById('nodeCloudAccount').value);
+                if (!account) return;
+                document.getElementById('nodeCountry').value = account.country;
+                const regions = resourceDict.region.filter(item => item.provider === account.provider && item.country === account.country);
+                document.getElementById('nodeRegion').innerHTML = regions.length ? regions.map(item => `<option value="${item.code}" ${item.code === account.region ? 'selected' : ''}>${esc(item.name)} (${esc(item.source)})</option>`).join('') : `<option value="${esc(account.region)}">${esc(account.region)}</option>`;
+            };
+            window.togglePriceSourceMode = () => {
+                const apiMode = document.getElementById('cfgPriceSource').value === '对接服务商接口获取';
+                ['cfgApiKeyWrap', 'cfgSecretWrap'].forEach(id => document.getElementById(id).style.display = apiMode ? 'block' : 'none');
+                ['cfgServerBillingWrap', 'cfgServerMonthlyWrap', 'cfgServerHourlyWrap', 'cfgTrafficBillingWrap', 'cfgPackageTrafficWrap', 'cfgTrafficMonthlyWrap', 'cfgTrafficUnitWrap', 'cfgFreeTrafficWrap', 'cfgOverageUnitWrap'].forEach(id => document.getElementById(id).style.display = apiMode ? 'none' : 'block');
+                if (!apiMode) {
+                    document.getElementById('cfgServerMonthlyWrap').style.display = document.getElementById('cfgServerBilling').value === '包月' ? 'block' : 'none';
+                    document.getElementById('cfgServerHourlyWrap').style.display = document.getElementById('cfgServerBilling').value === '按量' ? 'block' : 'none';
+                    const trafficMode = document.getElementById('cfgTrafficBilling').value;
+                    document.getElementById('cfgPackageTrafficWrap').style.display = trafficMode === '包月' ? 'block' : 'none';
+                    document.getElementById('cfgTrafficMonthlyWrap').style.display = trafficMode === '包月' ? 'block' : 'none';
+                    document.getElementById('cfgTrafficUnitWrap').style.display = trafficMode === '按量' ? 'block' : 'none';
+                    document.getElementById('cfgFreeTrafficWrap').style.display = trafficMode === '按量' ? 'block' : 'none';
+                    document.getElementById('cfgOverageUnitWrap').style.display = trafficMode === '包月' ? 'block' : 'none';
+                }
+                document.getElementById('feeStructureNotice').innerText = apiMode ? '当前选择通过服务商接口获取价格数据，请先配置 API Key 与 Secret。接口模式下将直接使用服务商返回账单。' : '当前选择手动价格配置，请补充服务器与流量的计费参数。';
+            };
+            window.switchSettingTab = tab => {
+                document.getElementById('settingBasicTab').classList.toggle('active', tab === 'basic');
+                document.getElementById('settingCostTab').classList.toggle('active', tab === 'cost');
+                document.getElementById('basicSettingPanel').style.display = tab === 'basic' ? 'block' : 'none';
+                document.getElementById('costSettingPanel').style.display = tab === 'cost' ? 'block' : 'none';
+            };
+            window.renderNodeConfigPreview = () => {};
+            window.openCostModal = nodeId => {
+                state.editingNodeId = nodeId || '';
+                document.getElementById('nodeProvider').value = 'AWS';
+                refreshNodeConfigOptions();
+                if (nodeId) {
+                    const node = nodes.find(item => item.id === nodeId);
+                    document.getElementById('nodeIp').value = node.ip;
+                    document.getElementById('nodeProvider').value = node.provider;
+                    refreshNodeConfigOptions();
+                    document.getElementById('nodeCloudAccount').value = node.accountId;
+                    window.handleAccountChange();
+                    document.getElementById('nodeCountry').value = node.country;
+                    document.getElementById('nodeRegion').value = node.serverRegion;
+                    document.getElementById('nodeSpec').value = node.serverSpec;
+                    document.getElementById('nodeSystemModel').value = node.systemModel;
+                    document.getElementById('nodeRemark').value = '';
+                    document.getElementById('cfgPriceSource').value = node.billSource === '服务商账单接口' ? '对接服务商接口获取' : '手动价格配置';
+                    document.getElementById('cfgServerBilling').value = node.serverBilling;
+                    document.getElementById('cfgServerMonthly').value = node.serverBilling === '包月' ? node.serverUnitPrice : 40;
+                    document.getElementById('cfgServerHourly').value = node.serverBilling === '按量' ? node.serverUnitPrice : 0.12;
+                    document.getElementById('cfgTrafficBilling').value = node.trafficBilling;
+                    document.getElementById('cfgPackageTraffic').value = node.packageTraffic || 500;
+                    document.getElementById('cfgTrafficMonthly').value = 12;
+                    document.getElementById('cfgTrafficUnit').value = node.trafficUnitPrice || 0.02;
+                    document.getElementById('cfgFreeTraffic').value = Math.max(Number(node.actualTraffic || 0) - Number(node.billableTraffic || 0), 0);
+                    document.getElementById('cfgApiKey').value = getAccount(node.accountId)?.key || 'AKIA****APAC';
+                    document.getElementById('cfgSecret').value = getAccount(node.accountId)?.secret || '****';
+                } else {
+                    document.getElementById('nodeIp').value = '';
+                    document.getElementById('nodeCountry').value = '日本';
+                    document.getElementById('nodeRemark').value = '';
+                    document.getElementById('cfgPriceSource').value = '对接服务商接口获取';
+                }
+                window.switchSettingTab('basic');
+                window.togglePriceSourceMode();
+                document.getElementById('costModal').style.display = 'flex';
+            };
+            window.saveCostConfig = () => {
+                const ip = document.getElementById('nodeIp').value.trim();
+                if (!ip) {
+                    showToast('请填写节点 IP');
+                    return;
+                }
+                const accountId = document.getElementById('nodeCloudAccount').value;
+                const account = getAccount(accountId);
+                const payload = {
+                    ip,
+                    provider: document.getElementById('nodeProvider').value,
+                    accountId,
+                    accountName: account?.name || '',
+                    accountCode: account?.accountCode || '',
+                    country: document.getElementById('nodeCountry').value,
+                    serverRegion: document.getElementById('nodeRegion').value,
+                    serverSpec: document.getElementById('nodeSpec').value,
+                    systemModel: document.getElementById('nodeSystemModel').value,
+                    billSource: document.getElementById('cfgPriceSource').value === '对接服务商接口获取' ? '服务商账单接口' : '系统费率计算',
+                    serverBilling: document.getElementById('cfgServerBilling').value,
+                    serverUnitPrice: document.getElementById('cfgServerBilling').value === '包月' ? Number(document.getElementById('cfgServerMonthly').value || 0) : Number(document.getElementById('cfgServerHourly').value || 0),
+                    trafficBilling: document.getElementById('cfgPriceSource').value === '对接服务商接口获取' ? '已包含在服务器费用中' : document.getElementById('cfgTrafficBilling').value,
+                    trafficUnitPrice: Number(document.getElementById('cfgTrafficUnit').value || 0),
+                    packageTraffic: Number(document.getElementById('cfgPackageTraffic').value || 0),
+                    configStatus: '已配置',
+                    sync: fmtDateTime(new Date())
+                };
+                let target = state.editingNodeId ? nodes.find(item => item.id === state.editingNodeId) : nodes.find(item => item.ip === ip);
+                if (target) Object.assign(target, payload);
+                else nodes.unshift({ id: `node-${Date.now()}`, period: rangeInfo().dim === 'day' ? document.getElementById('startDate').value : `${document.getElementById('startMonth').value}-01`, nodeStatus: '开启', lifecycle: '正常', createdAt: fmtDateTime(new Date()), deadAt: '', deadReason: '', recoverable: '可恢复', actualTraffic: 180, billableTraffic: 120, serverDurationHours: 24, serverCost: 2.5, systemFee: 0.1, bandwidthFee: 0.2, trafficCost: 1.8, ...payload });
+                closeModal('costModal');
+                fullRender();
+                showToast('节点配置已保存');
+            };
+            window.openDeadNodeModal = nodeId => {
+                const node = nodes.find(item => item.id === nodeId);
+                state.pendingDeadNodeId = nodeId;
+                document.getElementById('deadNodeIp').value = node.ip;
+                document.getElementById('deadNodeAccount').value = node.accountName;
+                document.getElementById('deadNodeTime').value = toDateInput(new Date());
+                document.getElementById('deadNodeReason').value = '节点失效';
+                document.getElementById('deadNodeRemark').value = '';
+                document.getElementById('deadNodeModal').style.display = 'flex';
+            };
+            window.confirmMarkNodeDead = () => {
+                const node = nodes.find(item => item.id === state.pendingDeadNodeId);
+                if (!node) return;
+                node.lifecycle = '已挂掉';
+                node.nodeStatus = '已挂掉';
+                node.deadAt = document.getElementById('deadNodeTime').value.replace('T', ' ') + ':00';
+                node.deadReason = document.getElementById('deadNodeReason').value;
+                node.recoverable = '不可恢复';
+                closeModal('deadNodeModal');
+                fullRender();
+                showToast('节点已标记为挂掉，已产生费用不退回');
+            };
+            window.openDetailModal = nodeId => {
+                const node = nodes.find(item => item.id === nodeId);
+                const account = getAccount(node.accountId);
+                const cost = nodeCost(node);
+                document.getElementById('detailNodeInfo').innerHTML = infoHtml([['节点 IP', node.ip], ['服务商账号', node.accountName], ['服务商', node.provider], ['统计周期', node.period], ['账单来源', node.billSource], ['同步时间', node.sync]]);
+                const notice = document.getElementById('detailNotice');
+                notice.style.display = 'block';
+                if (node.billSource === '未配置' || node.configStatus === '未配置') {
+                    notice.innerText = '该节点未配置服务商账单接口，也未配置产品费率，暂无法计算成本。请先完成服务商配置或产品费率配置。';
+                    document.getElementById('detailTable').innerHTML = '';
+                    document.getElementById('detailModal').style.display = 'flex';
+                    return;
+                }
+                if (node.billSource === '服务商账单接口') {
+                    notice.innerText = '服务商原始账单明细';
+                    const rows = [
+                        { billId: `BILL-${node.id}-S`, time: `${node.period} 08:00:00`, type: '服务器费用', product: node.serverSpec, resourceId: node.accountCode, billing: node.serverBilling, unitPrice: money2(node.serverUnitPrice), qty: node.serverBilling === '包月' ? '1 月' : `${node.serverDurationHours} 小时`, raw: node.serverCost + node.systemFee + node.bandwidthFee },
+                        { billId: `BILL-${node.id}-T`, time: `${node.period} 08:05:00`, type: '流量费用', product: `${node.country}出口流量`, resourceId: node.accountCode, billing: node.trafficBilling, unitPrice: money2(node.trafficUnitPrice), qty: `${Number(node.billableTraffic || 0).toFixed(2)} GB`, raw: node.trafficCost }
+                    ];
+                    document.getElementById('detailTable').innerHTML = `<thead><tr>${['服务商账单 ID', '账单时间', '费用类型', '产品名称', '实例 ID / 资源 ID', '服务商', '节点 IP', '服务器地区', '服务器配置', '系统型号', '计费方式', '单价', '数量', '原始金额', '折扣率', '折扣金额', '折后金额', '账单来源', '同步批次号', '同步时间'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${rows.map(item => {
+                        const discount = item.raw * (1 - (account?.discountRate || 1));
+                        return `<tr><td>${item.billId}</td><td>${item.time}</td><td>${item.type}</td><td>${esc(item.product)}</td><td>${esc(item.resourceId)}</td><td>${esc(node.provider)}</td><td>${esc(node.ip)}</td><td>${esc(node.serverRegion)}</td><td>${esc(node.serverSpec)}</td><td>${esc(node.systemModel)}</td><td>${esc(item.billing)}</td><td>${item.unitPrice}</td><td>${esc(item.qty)}</td><td>${money2(item.raw)}</td><td>${isFinance() ? (account?.discountRate === 1 ? '无折扣' : `${Math.round(account.discountRate * 100)}%`) : '-'}</td><td>${isFinance() ? money2(discount) : '-'}</td><td>${isFinance() ? money2(item.raw - discount) : '-'}</td><td>${esc(node.billSource)}</td><td>SYNC-20260430</td><td>${esc(node.sync)}</td></tr>`;
+                    }).join('')}</tbody>`;
+                } else {
+                    notice.innerText = '系统计算过程';
+                    document.getElementById('detailTable').innerHTML = `<thead><tr><th>字段</th><th>值</th></tr></thead><tbody>${[
+                        ['命中的费率规则 ID', `RULE-${node.id}`],
+                        ['服务商', node.provider],
+                        ['国家/地区', node.country],
+                        ['服务商账号', node.accountName],
+                        ['服务器地区', node.serverRegion],
+                        ['服务器配置', node.serverSpec],
+                        ['系统型号', node.systemModel],
+                        ['规则生效时间', '2026-04-01'],
+                        ['服务器计费方式', node.serverBilling],
+                        ['服务器单价', money2(node.serverUnitPrice)],
+                        ['服务器运行时长', `${node.serverDurationHours} 小时`],
+                        ['服务器成本计算公式', `${money2(node.serverUnitPrice)} x ${node.serverDurationHours} = ${money2(node.serverCost)}`],
+                        ['流量计费方式', node.trafficBilling],
+                        ['套餐流量', `${Number(node.packageTraffic || 0).toFixed(0)}GB`],
+                        ['实际流量', `${Number(node.actualTraffic || 0).toFixed(2)}GB`],
+                        ['计费流量', `${Number(node.billableTraffic || 0).toFixed(2)}GB`],
+                        ['流量单价', money2(node.trafficUnitPrice)],
+                        ['流量成本计算公式', `${Number(node.billableTraffic || 0).toFixed(2)} x ${money2(node.trafficUnitPrice)} = ${money2(node.trafficCost)}`],
+                        ['节点消耗', money2(cost.total)],
+                        ['账号折扣', isFinance() ? (account?.discountRate === 1 ? '无折扣' : `${Math.round(account.discountRate * 100)}%`) : '-'],
+                        ['折扣金额', isFinance() ? money2(cost.discountAmount) : '-'],
+                        ['折后节点消耗', isFinance() ? money2(cost.discounted) : '-']
+                    ].map(item => `<tr><td>${esc(item[0])}</td><td>${esc(String(item[1]))}</td></tr>`).join('')}</tbody>`;
+                }
+                document.getElementById('detailModal').style.display = 'flex';
+            };
+            window.renderImportPreview = () => {
+                document.getElementById('batchImportTable').innerHTML = `<thead><tr>${['行号', '节点 IP', '服务商', '服务商账号', '服务商地区', '账号基础费用', '账号折扣', '国家/地区', '服务器配置', '系统型号', '校验状态', '异常原因', '处理方式'].map(item => `<th>${item}</th>`).join('')}</tr></thead><tbody>${importPreviewRows.map(item => `<tr><td>${item.row}</td><td>${esc(item.ip)}</td><td>${esc(item.provider)}</td><td>${esc(item.account)}</td><td>${esc(item.region)}</td><td>${money2(item.baseFee)}</td><td>${Math.round(item.discountRate * 100)}%</td><td>${esc(item.country)}</td><td>${esc(item.spec)}</td><td>${esc(item.system)}</td><td>${esc(item.status)}</td><td>${esc(item.reason)}</td><td>${esc(item.action)}</td></tr>`).join('')}</tbody>`;
+            };
+            window.mockUploadImportFile = () => {
+                window.renderImportPreview();
+                document.getElementById('batchImportModal').style.display = 'flex';
+                showToast('已读取 mock 导入文件，正在生成预览');
+            };
+            window.applyImportRows = () => {
+                closeModal('batchImportModal');
+                showToast('已仅导入通过数据');
+            };
+            window.openBatchImportModal = () => {
+                window.renderImportPreview();
+                document.getElementById('batchImportModal').style.display = 'flex';
+            };
+            function applyExternalNavigation() {
+                const params = new URLSearchParams(window.location.search);
+                const provider = params.get('provider') || '';
+                const country = params.get('country') || '';
+                const account = params.get('account') || '';
+                const ip = params.get('ip') || '';
+                const section = params.get('section') || '';
+                const action = params.get('action') || '';
+                const nodeId = params.get('nodeId') || '';
+                const accountId = params.get('accountId') || '';
+                if (provider) document.getElementById('providerFilter').value = provider;
+                if (country) document.getElementById('countryFilter').value = country;
+                if (account) document.getElementById('accountFilter').value = account;
+                if (ip) document.getElementById('ipFilter').value = ip;
+                if (section === 'node') state.tab = 'nodes';
+                fullRender();
+                if (action === 'recharge' && accountId) {
+                    window.openRechargeModal(accountId);
+                    return;
+                }
+                if (action === 'edit-node' && nodeId) {
+                    window.openCostModal(nodeId);
+                    return;
+                }
+                if (section === 'account') {
+                    document.getElementById('accountCostTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                if (section === 'node') {
+                    document.getElementById('dataTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+
+            document.getElementById('roleSwitch').value = 'ops';
+            document.getElementById('dimension').value = 'day';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('startMonth').value = '2026-01';
+            document.getElementById('endMonth').value = '2026-04';
+            populateAccountFilterOptions();
+            refreshNodeConfigOptions();
+            roleVisibility();
+            window.togglePriceSourceMode();
+            applyExternalNavigation();
+        })();
+    </script>
+</body>
+
+</html>
